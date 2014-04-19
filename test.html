@@ -1,0 +1,38 @@
+
+<html>
+	<head>
+	    <meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
+        <title>Canvas Drawing</title>
+        <link rel="stylesheet" type="text/css" href="test.css" />
+        <script type="text/javascript" src="external_js/jquery-1.9.0.min.js"></script>
+		<script type="text/javascript" src="sketch.js"></script>
+		<script type="text/javascript">
+		  $(function() {
+		  	canvas = document.getElementById("colors_sketch");
+			  canvas.width = document.body.clientWidth; //document.width is obsolete
+			  canvas.height = document.body.clientHeight; //document.height is obsolete
+
+		    $.each(['#f00', '#ff0', '#0f0', '#0ff', '#00f', '#f0f', '#000', '#fff'], function() {
+		      $('#colors_demo .tools').append("<a href='#colors_sketch' data-color='" + this + "' style='width: 10px; background: " + this + ";'></a> ");
+		    });
+		    $.each([3, 5, 10, 15], function() {
+		      $('#colors_demo .tools').append("<a href='#colors_sketch' data-size='" + this + "' style='background: #ccc'>" + this + "</a> ");
+		    });
+		    $('#colors_sketch').sketch();
+		  });
+		</script>
+
+	</head>
+
+	<body>
+	<div id="colors_demo">
+		<div class="tools">
+	  	<a href="#colors_sketch" data-download="png" style="float: right; width: 100px;">Download</a>
+		</div>
+	</div>
+	<canvas id="colors_sketch" width="800" height="300"></canvas>
+	
+	</body>
+
+</html>
+
