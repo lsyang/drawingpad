@@ -27,6 +27,17 @@ var __slice = Array.prototype.slice;
       return this;
     }
   };
+
+  $(document).ready(function () {
+     $("#output").append("Waiting for system time..");
+     setInterval("delayedPost()", 1000);
+   });
+ function delayedPost() {
+   $.post("http://localhost:9999/draw", "", function(data, status) {
+   console.log("lalalaa")
+   });
+ }
+
   Sketch = (function() {
     function Sketch(el, opts) {
       this.el = el;
@@ -123,6 +134,7 @@ var __slice = Array.prototype.slice;
   $.sketch = {
     tools: {}
   };
+
   $.sketch.tools.marker = {
     onEvent: function(e) {
       switch (e.type) {
@@ -161,7 +173,6 @@ var __slice = Array.prototype.slice;
       this.context.strokeStyle = action.color;
       this.context.lineWidth = action.size;
       $.post("http://localhost:9999/stroke", {x: event.x, y: event.y, color: action.color, size: action.size}, function(data, status) {});
-      //$.post("http://localhost:9999/stroke", {inputVal: "bbqqq"}, function(data, status) {});
       console.log(event.x, event.y, action.color, action.size)
       return this.context.stroke();
     }

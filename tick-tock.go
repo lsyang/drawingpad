@@ -18,18 +18,6 @@ var page =
         <script type="text/javascript" src="resources/external_js/jquery-1.9.0.min.js"></script>
     
     <script type="text/javascript" src="resources/sketch.js"></script>
-    <script type="text/javascript">
-               $(document).ready(function () {
-                 $("#output").append("Waiting for system time..");
-                 setInterval("delayedPost()", 1000);
-               });
-               function delayedPost() {
-                 $.post("http://localhost:9999/gettime?x=2&y=3&color=red", {inputVal: "lala"}, function(data, status) {
-                 $("#output").empty();
-                 $("#output").append(data);
-                 });
-               }
-    </script>
 
     <script type="text/javascript">
       $(function() {
@@ -84,10 +72,15 @@ func handlerStroke(w http.ResponseWriter, r *http.Request){
   fmt.Fprint(w, page)
 }
 
+func handlerDraw(w http.ResponseWriter, r *http.Request) {
+        fmt.Fprint(w, "love wen wen")
+}
+
 func main() {
         http.Handle("/resources/", http.StripPrefix("/resources/", http.FileServer(http.Dir("resources")))) 
         http.HandleFunc("/time", handler)
         http.HandleFunc("/stroke", handlerStroke)
+        http.HandleFunc("/draw", handlerDraw)
         http.HandleFunc("/gettime", handlerGetTime)
         log.Fatal(http.ListenAndServe(":9999", nil))
 }
