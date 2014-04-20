@@ -24,7 +24,7 @@ var page =
                  setInterval("delayedPost()", 1000);
                });
                function delayedPost() {
-                 $.post("http://localhost:9999/gettime?x=2&y=3&color=red", {inputVal: "lovewen"}, function(data, status) {
+                 $.post("http://localhost:9999/gettime?x=2&y=3&color=red", {inputVal: "lala"}, function(data, status) {
                  $("#output").empty();
                  $("#output").append(data);
                  });
