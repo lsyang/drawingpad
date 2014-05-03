@@ -5,12 +5,15 @@ import "fmt"
 import "time"
 import "crypto/rand"
 import "math/big"
+import "sync"
 
 type Clerk struct {
+  mu sync.Mutex // one RPC at a time
   servers []string
   // You will have to modify this struct.
   me int64
   requestID int64
+  max_operation_num int
 }
 
 
@@ -65,17 +68,48 @@ func call(srv string, rpcname string,
 //
 // Get update from the server
 //
-func (ck *Clerk) GetUpdate(key string) string {
-  // You will have to modify this function.
+//func (ck *Clerk) GetUpdate() (bool bool map[int]int []Operation) {
+func (ck *Clerk) GetUpdate() GetUpdateReply{
+  ck.mu.Lock()
+  defer ck.mu.Unlock()
+  var reply GetUpdateReply
 
+  for _, srv := range ck.servers {
+    args := &GetUpdateArgs{ck.max_operation_num,ck.me,ck.requestID}
+    
+    ok := call(srv, "EPaxos.GetUpdate", args, &reply)
+    if ok {
+      ck.requestID++
+      return reply
+    }
+    time.Sleep(100 * time.Millisecond)
+  }
+  return reply
 }
 
 //
 // Put operation by client
 //
-func (ck *Clerk) Put(key string, value string) string {
-  // You will have to modify this function.
+func (ck *Clerk) Put(key int, value string) PutReply {
+  ck.mu.Lock()
+  defer ck.mu.Unlock()
+  var new_op Operation
+  new_op.Key=key
+  new_op.Value=value
+  var reply PutReply
 
+  for _, srv := range ck.servers {
+    args := &PutArgs{ck.max_operation_num,new_op,ck.me,ck.requestID}
+    
+    ok := call(srv, "EPaxos.Put", args, &reply)
+    if ok {
+      ck.requestID++
+      //check if current op is in reply
+      return reply
+    }
+    time.Sleep(100 * time.Millisecond)
+  }
+  return reply
 }
 
 

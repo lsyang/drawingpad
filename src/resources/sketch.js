@@ -27,6 +27,13 @@ var __slice = Array.prototype.slice;
       return this;
     }
   };
+
+          //call post every 1s
+      $(document).ready(function () {
+         $("#output").append("Waiting for system time..");
+         //setInterval(function() {sketch_object.getUpdate()}, 1000);
+       });
+
   Sketch = (function() {
     function Sketch(el, opts) {
       this.el = el;
@@ -36,7 +43,7 @@ var __slice = Array.prototype.slice;
         toolLinks: true,
         defaultTool: 'marker',
         defaultColor: '#000000',
-        defaultSize: 5
+        defaultSize: 1
       }, opts);
       this.painting = false;
       this.color = this.options.defaultColor;
@@ -44,7 +51,9 @@ var __slice = Array.prototype.slice;
       this.tool = this.options.defaultTool;
       this.actions = [];
       this.action = [];
+      this.history=[];
       this.canvas.bind('click mousedown mouseup mousemove mouseleave mouseout touchstart touchmove touchend touchcancel', this.onEvent);
+      sketch_object=this
       if (this.options.toolLinks) {
         $('body').delegate("a[href=\"#" + (this.canvas.attr('id')) + "\"]", 'click', function(e) {
           var $canvas, $this, key, sketch, _i, _len, _ref;
@@ -65,6 +74,96 @@ var __slice = Array.prototype.slice;
         });
       }
     }
+
+
+  Sketch.prototype.getUpdate=function() {
+  console.log("hahaha")
+   $.post("http://localhost:9999/drawUpdate", "", function(data, status) {
+    //status = success
+   obj = JSON.parse(data);
+   //console.log(obj)
+   var sketch = sketch_object;
+   if(obj.Has_map){ //clear canvas
+    sketch.clear()
+    //draw canvas
+    for(var i=0; i<obj.Board.length; i++){
+      sketch.executeDraw(i,obj.Board[i])
+    }
+   }
+   if(obj.Has_operation){
+    for (var i=0; i<obj.New_operations.length; i++){
+      var op=obj.New_operations[i]
+      sketch.executeDraw(op.Key,op.Val)
+    }
+   }
+  });
+  };
+
+  Sketch.prototype.clear=function(){
+    var self = this;
+    this.actions = [];
+    self.context.clearRect(0, 0, self.canvas.width(), self.canvas.height());
+  }
+  Sketch.prototype.xy2val=function(x,y){
+    var self=this;
+    x=Math.round(x)
+    y=Math.round(y)
+    return Math.round(self.canvas.width())*y+x
+  }
+  Sketch.prototype.val2xy=function(val){
+    var self=this;
+    var y=Math.floor(val/Math.round(self.canvas.width()))
+    var x=val-y*Math.round(self.canvas.width())
+    return [x, y]
+  }
+  Sketch.prototype.listPoints=function(x1,y1,x2,y2){
+    var c=0
+    var result=[]
+    var deltay=1
+    var deltax=1
+    if(y1>y2){
+      deltay=-1
+    }
+    if(x1>x2){
+      deltax=-1
+    }
+    if (y1==y2){
+      for(var i=x1; i<=x2; i++){
+        result.push(this.xy2val(i+deltax,y1))
+      }
+    }else{
+      c=(y2-y1)/(x2-x1);
+      for(var i=0; i<=(y2-y1)*deltay; i++){
+        result.push(this.xy2val(Math.round(c*(x1+deltax*i)),y1+deltay*i))
+      }
+    }
+    return result
+  }
+  Sketch.prototype.executeDraw=function(pos, col){
+    var sketch = sketch_object;
+    sketch.el.width = sketch.canvas.width();
+    sketch.context = sketch.el.getContext('2d');
+      var action = {
+        tool: 'marker',
+        color: col, 
+        size: 1,
+        events: []
+      };
+      var key=sketch.val2xy(pos)
+      var _x=key[0]
+      var _y=key[1]
+      action.events.push({
+        x: _x,
+        y: _y,
+      });
+      action.events.push({
+        x: _x,
+        y: _y+5,
+      });
+      sketch.actions.push(action)
+      sketch.redraw()
+  }
+
     Sketch.prototype.download = function(format) {
       var mime;
       format || (format = "png");
@@ -80,19 +179,20 @@ var __slice = Array.prototype.slice;
     };
     Sketch.prototype.startPainting = function() {
       this.painting = true;
-      return this.action = {
-        tool: this.tool,
-        color: this.color,
-        size: parseFloat(this.size),
-        events: []
-      };
+      // return this.action = {
+      //   tool: this.tool,
+      //   color: this.color,
+      //   size: parseFloat(this.size),
+      //   events: []
+      // };
     };
     Sketch.prototype.stopPainting = function() {
-      if (this.action) {
-        this.actions.push(this.action);
-      }
+      // if (this.action) {
+      //   this.actions.push(this.action);
+      // }
       this.painting = false;
-      this.action = null;
+      //this.action = null;
+      this.history=[];
       return this.redraw();
     };
     Sketch.prototype.onEvent = function(e) {
@@ -104,7 +204,9 @@ var __slice = Array.prototype.slice;
       e.preventDefault();
       return false;
     };
+
     Sketch.prototype.redraw = function() {
+      //console.log("redraw")
       var sketch;
       this.el.width = this.canvas.width();
       this.context = this.el.getContext('2d');
@@ -120,10 +222,14 @@ var __slice = Array.prototype.slice;
     };
     return Sketch;
   })();
+
   $.sketch = {
     tools: {}
   };
+
+
   $.sketch.tools.marker = {
+
     onEvent: function(e) {
       switch (e.type) {
         case 'mousedown':
@@ -138,12 +244,51 @@ var __slice = Array.prototype.slice;
           this.stopPainting();
       }
       if (this.painting) {
-        this.action.events.push({
-          x: e.pageX - this.canvas.offset().left,
-          y: e.pageY - this.canvas.offset().top,
-          event: e.type
+        
+        var _x=e.pageX - this.canvas.offset().left;
+        var _y=e.pageY - this.canvas.offset().top;
+        var action=this.history
+        action.push({
+          x: _x,
+          y: _y,
+        })
+        //define pre as the previous point
+        if (action.length>1){
+          var pre=action[action.length-2]
+        }else{
+          var pre=action[action.length-1] //current point
+        }
+        var key=this.listPoints(Math.round(pre.x),Math.round(pre.y),Math.round(_x),Math.round(_y)) //put in integers
+        console.log(key)
+       var keys=JSON.stringify(key)
+        //var key=this.xy2val(_x,_y);
+        var val=this.action.color;
+        $.post("http://localhost:9999/stroke", {Key: keys, Value: val}, function(data, status) {
+       // $.post("http://localhost:9999/stroke", {x1:Math.round(pre.x),y1:Math.round(pre.y),x2:Math.round(_x),y2:Math.round(_y), Value: val}, function(data, status) {
+             obj = JSON.parse(data);
+             //console.log(obj)
+             var sketch = sketch_object;
+             if(obj.Has_map){ //clear canvas
+              sketch.clear()
+              //draw canvas
+              for(var i=0; i<obj.Board.length; i++){
+                sketch.executeDraw(i,obj.Board[i])
+              }
+             }
+             if(obj.Has_operation){
+              for (var i=0; i<obj.New_operations.length; i++){
+                var op=obj.New_operations[i]
+                sketch.executeDraw(op.Key,op.Val)
+              }
+             }
         });
-        return this.redraw();
+        //orginal code
+        // this.action.events.push({
+        //   x: e.pageX - this.canvas.offset().left,
+        //   y: e.pageY - this.canvas.offset().top,
+        //   event: e.type
+        // });
+        // return this.redraw();
       }
     },
     draw: function(action) {
@@ -152,17 +297,18 @@ var __slice = Array.prototype.slice;
       this.context.lineCap = "round";
       this.context.beginPath();
       this.context.moveTo(action.events[0].x, action.events[0].y);
+
       _ref = action.events;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         event = _ref[_i];
         this.context.lineTo(event.x, event.y);
+        console.log(event.x, event.y)
         previous = event;
       }
       this.context.strokeStyle = action.color;
       this.context.lineWidth = action.size;
-      $.post("http://localhost:9999/stroke", {x: event.x, y: event.y, color: action.color, size: action.size}, function(data, status) {});
-      //$.post("http://localhost:9999/stroke", {inputVal: "bbqqq"}, function(data, status) {});
-      console.log(event.x, event.y, action.color, action.size)
+      
+      // console.log(event.x, event.y, action.color)
       return this.context.stroke();
     }
   };
