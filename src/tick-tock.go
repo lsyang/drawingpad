@@ -9,7 +9,7 @@ import (
         "time"
         "encoding/json"
         "EPaxos"
-       // "strconv"
+        "strconv"
 )
 
 type Line struct{
@@ -37,9 +37,9 @@ var page =
         $.each(['#f00', '#ff0', '#0f0', '#0ff', '#00f', '#f0f', '#000', '#fff'], function() {
           $('#colors_demo .tools').append("<a href='#colors_sketch' data-color='" + this + "' style='width: 10px; background: " + this + ";'></a> ");
         });
-        $.each([3, 5, 10, 15], function() {
-          $('#colors_demo .tools').append("<a href='#colors_sketch' data-size='" + this + "' style='background: #ccc'>" + this + "</a> ");
-        });
+        // $.each([3, 5, 10, 15], function() {
+        //   $('#colors_demo .tools').append("<a href='#colors_sketch' data-size='" + this + "' style='background: #ccc'>" + this + "</a> ");
+        // });
         $('#colors_sketch').sketch();
       });
     </script>
@@ -77,43 +77,25 @@ func handlerGetTime(w http.ResponseWriter, r *http.Request) {
 func handlerStroke(w http.ResponseWriter, r *http.Request){
   r.ParseForm()
   keys:=r.FormValue("Key")
-  keys_json:="{"+`"Keys":`+ keys +`}`
+  //keys_json:="{"+`"Keys":`+ keys +`}`
   val:=r.FormValue("Value")
-  var line Line
-  var lala []byte
-  lala= []byte(keys_json)
-  err:=json.Unmarshal(lala, &line)
-  fmt.Println(err)
-  fmt.Println(keys)
-  fmt.Println(lala)
-  fmt.Println(line.Keys)
+  // var line Line
+  // var lala []byte
+ // lala= []byte(keys_json)
+  //json.Unmarshal(lala, &line)
 
   var m EPaxos.GetUpdateReply
   m.Has_operation=true
-  for i := 0; i < len(line.Keys); i++ {
-      op:=EPaxos.Operation{line.Keys[i], val,0}
-      m.New_operations=append(m.New_operations, op)
-  }
+  key_int,_:=strconv.Atoi(keys)
+  op:=EPaxos.Operation{key_int, val,0}
+  m.New_operations=append(m.New_operations, op)
+  // for i := 0; i < len(line.Keys); i++ {
+  //     op:=EPaxos.Operation{line.Keys[i], val,0}
+  //     m.New_operations=append(m.New_operations, op)
+  // }
   b, _ := json.Marshal(m)
 //put response into a json file
   fmt.Fprint(w, string(b))
-
-  // var line Line 
-  // err := json.Unmarshal(r, &line)
-  // if err==nil{
-  //   //call Put, get PutReply
-  //   //dummmy code
-  //   var m EPaxos.GetUpdateReply
-  //   m.Has_operation=true
-  //   for i := 0; i < len(line.Keys); i++ {
-  //       op:=EPaxos.Operation{Line.keys[i], line.Val,0}
-  //       m.New_operations=append(m.New_operations, op)
-  // }
-  // b, _ := json.Marshal(m)
-  // //put response into a json file
-  // fmt.Fprint(w, string(b))
-
-  // }
 }
 
 func drawUpdate(w http.ResponseWriter, r *http.Request) {

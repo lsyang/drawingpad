@@ -78,7 +78,8 @@ var __slice = Array.prototype.slice;
 
   Sketch.prototype.getUpdate=function() {
   console.log("hahaha")
-   $.post("http://localhost:9999/drawUpdate", "", function(data, status) {
+
+   $.post(window.location.origin+"/drawUpdate", "", function(data, status) {
     //status = success
    obj = JSON.parse(data);
    //console.log(obj)
@@ -119,25 +120,56 @@ var __slice = Array.prototype.slice;
   Sketch.prototype.listPoints=function(x1,y1,x2,y2){
     var c=0
     var result=[]
-    var deltay=1
     var deltax=1
+    var deltay=1
+    var val=this.color;
     if(y1>y2){
       deltay=-1
     }
     if(x1>x2){
       deltax=-1
     }
-    if (y1==y2){
-      for(var i=x1; i<=x2; i++){
-        result.push(this.xy2val(i+deltax,y1))
+    if (x1==x2){
+      for(var i=0; i<=(y2-y1)*deltay; i++){
+        this.put(this.xy2val(x1,y1+i*deltay),val)
+        //result.push(this.xy2val(x1,y1+i*deltay))
       }
     }else{
       c=(y2-y1)/(x2-x1);
-      for(var i=0; i<=(y2-y1)*deltay; i++){
-        result.push(this.xy2val(Math.round(c*(x1+deltax*i)),y1+deltay*i))
+      if (Math.abs(c)<1){ //when its almost straight line
+        for(var i=0; i<=(x2-x1)*deltax; i++){
+          this.put(this.xy2val(x1+deltax*i,y1+c*deltax*i), val)
+          //result.push(this.xy2val(x1+deltax*i,y1+c*deltax*i))
+        }
+      }else{
+        for(var i=0; i<=(y2-y1)*deltay; i++){
+          this.put(this.xy2val(x1+1/c*deltay*i,y1+deltay*i),val)
+          //result.push(this.xy2val(x1+1/c*deltay*i,y1+deltay*i))
+        }
       }
     }
     return result
+  }
+  Sketch.prototype.put=function(key, val){
+    //put key value into the server
+    $.post(window.location.origin+"/stroke", {Key: key, Value: val}, function(data, status) {
+         obj = JSON.parse(data);
+         //console.log(obj)
+         var sketch = sketch_object;
+         if(obj.Has_map){ //clear canvas
+          sketch.clear()
+          //draw canvas
+          for(var i=0; i<obj.Board.length; i++){
+            //sketch.executeDraw(i,obj.Board[i])
+          }
+         }
+         if(obj.Has_operation){
+          for (var i=0; i<obj.New_operations.length; i++){
+            var op=obj.New_operations[i]
+            sketch.executeDraw(op.Key,op.Value)
+          }
+         }
+    });
   }
   Sketch.prototype.executeDraw=function(pos, col){
     var sketch = sketch_object;
@@ -158,11 +190,22 @@ var __slice = Array.prototype.slice;
       });
       action.events.push({
         x: _x,
-        y: _y+5,
+        y: _y+1,
       });
       sketch.actions.push(action)
       sketch.redraw()
-  }
+    }
+    Sketch.prototype.test=function(x1,y1,x2,y2){
+
+        var lala=this.listPoints(x1,y1,x2,y2)
+
+        for (var i=0; i<lala.length; i++){
+          // console.log(lala[i])
+           //console.log(this.val2xy(lala[i]));
+          this.executeDraw(lala[i],'#000000') 
+        }
+    }
+
 
     Sketch.prototype.download = function(format) {
       var mime;
@@ -216,9 +259,9 @@ var __slice = Array.prototype.slice;
           return $.sketch.tools[this.tool].draw.call(sketch, this);
         }
       });
-      if (this.painting && this.action) {
-        return $.sketch.tools[this.action.tool].draw.call(sketch, this.action);
-      }
+      // if (this.painting && this.action) {
+      //   return $.sketch.tools[this.action.tool].draw.call(sketch, this.action);
+      // }
     };
     return Sketch;
   })();
@@ -259,29 +302,29 @@ var __slice = Array.prototype.slice;
           var pre=action[action.length-1] //current point
         }
         var key=this.listPoints(Math.round(pre.x),Math.round(pre.y),Math.round(_x),Math.round(_y)) //put in integers
-        console.log(key)
-       var keys=JSON.stringify(key)
-        //var key=this.xy2val(_x,_y);
-        var val=this.action.color;
-        $.post("http://localhost:9999/stroke", {Key: keys, Value: val}, function(data, status) {
-       // $.post("http://localhost:9999/stroke", {x1:Math.round(pre.x),y1:Math.round(pre.y),x2:Math.round(_x),y2:Math.round(_y), Value: val}, function(data, status) {
-             obj = JSON.parse(data);
-             //console.log(obj)
-             var sketch = sketch_object;
-             if(obj.Has_map){ //clear canvas
-              sketch.clear()
-              //draw canvas
-              for(var i=0; i<obj.Board.length; i++){
-                sketch.executeDraw(i,obj.Board[i])
-              }
-             }
-             if(obj.Has_operation){
-              for (var i=0; i<obj.New_operations.length; i++){
-                var op=obj.New_operations[i]
-                sketch.executeDraw(op.Key,op.Val)
-              }
-             }
-        });
+  //orginal stuff
+       // var keys=JSON.stringify(key)
+       //   var val=this.color;
+       //   //testing purpose
+       //  // var keys=JSON.stringify([this.xy2val(_x,_y)])
+       //  $.post(window.location.origin+"/stroke", {Key: keys, Value: val}, function(data, status) {
+       //       obj = JSON.parse(data);
+       //       //console.log(obj)
+       //       var sketch = sketch_object;
+       //       if(obj.Has_map){ //clear canvas
+       //        sketch.clear()
+       //        //draw canvas
+       //        for(var i=0; i<obj.Board.length; i++){
+       //          //sketch.executeDraw(i,obj.Board[i])
+       //        }
+       //       }
+       //       if(obj.Has_operation){
+       //        for (var i=0; i<obj.New_operations.length; i++){
+       //          var op=obj.New_operations[i]
+       //          sketch.executeDraw(op.Key,op.Value)
+       //        }
+       //       }
+       //  });
         //orginal code
         // this.action.events.push({
         //   x: e.pageX - this.canvas.offset().left,
@@ -297,17 +340,17 @@ var __slice = Array.prototype.slice;
       this.context.lineCap = "round";
       this.context.beginPath();
       this.context.moveTo(action.events[0].x, action.events[0].y);
+      
 
       _ref = action.events;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         event = _ref[_i];
         this.context.lineTo(event.x, event.y);
-        console.log(event.x, event.y)
+        //console.log(event.x, event.y)
         previous = event;
       }
       this.context.strokeStyle = action.color;
-      this.context.lineWidth = action.size;
-      
+      this.context.lineWidth = action.size;      
       // console.log(event.x, event.y, action.color)
       return this.context.stroke();
     }
