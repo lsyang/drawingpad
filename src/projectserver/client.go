@@ -94,29 +94,29 @@ func (ck *Clerk) GetUpdate() GetUpdateReply{
   return reply
 }
 
-func (ck *Clerk) Get(key int) string {
-  // ck.mu.Lock()
-  // defer ck.mu.Unlock()
-  //increment the operationId to be the next one
-  args := &GetArgs{key, ck.me, ck.requestID}
-  for {
-    //try sending request for all the servers
-    for _, server := range ck.servers {
-      reply := &GetReply{}
-      ok := call(server, "KVPaxos.Get", args, reply)
-      if ok == true && reply.Err == "" {
-        ck.requestID++
-        return reply.Value 
-      }
-    }
-    time.Sleep(time.Second)
-  }
-}
+// func (ck *Clerk) Get(key int) string {
+//   // ck.mu.Lock()
+//   // defer ck.mu.Unlock()
+//   //increment the operationId to be the next one
+//   args := &GetArgs{key, ck.me, ck.requestID}
+//   for {
+//     //try sending request for all the servers
+//     for _, server := range ck.servers {
+//       reply := &GetReply{}
+//       ok := call(server, "KVPaxos.Get", args, reply)
+//       if ok == true && reply.Err == "" {
+//         ck.requestID++
+//         return reply.Value 
+//       }
+//     }
+//     time.Sleep(time.Second)
+//   }
+// }
 
 //
 // Put operation by client
 //
-func (ck *Clerk) Put(key int, value string) PutReply {
+func (ck *Clerk) Put(op Stroke) PutReply {
   ck.mu.Lock()
   defer ck.mu.Unlock()
   // var new_op Operation
@@ -129,7 +129,7 @@ func (ck *Clerk) Put(key int, value string) PutReply {
   var reply PutReply
   for{
     for _, srv := range ck.servers {
-      args := &PutArgs{ck.max_operation_num,key,value,ck.me,ck.requestID}
+      args := &PutArgs{ck.max_operation_num,op,ck.me,ck.requestID}
       
       ok := call(srv, "KVPaxos.Put", args, &reply)
       if ok {
@@ -203,16 +203,21 @@ func (ck *Clerk) handlerGetTime(w http.ResponseWriter, r *http.Request) {
 
 func (ck *Clerk) handlerStroke(w http.ResponseWriter, r *http.Request){
   r.ParseForm()
-  keys:=r.FormValue("Key")
-  //keys_json:="{"+`"Keys":`+ keys +`}`
-  val:=r.FormValue("Value")
+  x1,_:=strconv.Atoi(r.FormValue("startx"))
+  y1,_:=strconv.Atoi(r.FormValue("starty"))
+  x2,_:=strconv.Atoi(r.FormValue("endx"))
+  y2,_:=strconv.Atoi(r.FormValue("endy"))
+  col:=r.FormValue("color")
+  op:=Stroke{x1,y1,x2,y2,col}
+  //fmt.Println("%v,%v,%v,%v", x1,y1,x2,y2)
+
   // var line Line
   // var lala []byte
  // lala= []byte(keys_json)
   //json.Unmarshal(lala, &line)
-  key_int,_:=strconv.Atoi(keys)
-  ck.keys=append(ck.keys,key_int)
-  m:=ck.Put(key_int,val)
+  //key_int,_:=strconv.Atoi(keys)
+  //ck.keys=append(ck.keys,key_int)
+  ck.Put(op)
   
   // op:=EPaxos.Operation{key_int, val,0}
   // m.New_operations=append(m.New_operations, op)
@@ -220,9 +225,9 @@ func (ck *Clerk) handlerStroke(w http.ResponseWriter, r *http.Request){
   //     op:=EPaxos.Operation{line.Keys[i], val,0}
   //     m.New_operations=append(m.New_operations, op)
   // }
-  b, _ := json.Marshal(m)
+  //b, _ := json.Marshal(m)
 //put response into a json file
-  fmt.Fprint(w, string(b))
+ // fmt.Fprint(w, string(b))
 }
 
 func (ck *Clerk) drawUpdate(w http.ResponseWriter, r *http.Request) {
@@ -232,10 +237,10 @@ func (ck *Clerk) drawUpdate(w http.ResponseWriter, r *http.Request) {
   //update max_operation_num
   m:=ck.GetUpdate()
   operations:=m.New_operations
-  fmt.Println(len(operations))
+  //fmt.Println(len(operations))
   if m.Has_operation{
    ck.max_operation_num=operations[len(operations)-1].SeqNum
-   fmt.Println("max seq Num,  %v",ck.max_operation_num)
+  // fmt.Println("max seq Num,  %v",ck.max_operation_num)
   }
   // m.Has_operation=true
   // m.New_operations=append(m.New_operations, op1, op2)

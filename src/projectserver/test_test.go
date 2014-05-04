@@ -8,12 +8,12 @@ import "time"
 import "fmt"
 import "math/rand"
 
-func check(t *testing.T, ck *Clerk, key int, value string) {
-  v := ck.Get(key)
+func check(t *testing.T, ck *Clerk, start int,end int, value string) {
+  v := ck.Get(start,end)
   
   if v != value {
-   t.Fatalf("Get(%v) -> %v, expected %v", key, v, value)
-   //fmt.Printf("Get(%v) -> %v, expected %v", key, v, value)
+   t.Fatalf("Get(%v) -> %v, expected %v", start,end, v, value)
+   //fmt.Printf("Get(%v) -> %v, expected %v", start,end, v, value)
   }
 }
 
@@ -65,7 +65,7 @@ func TestBasic(t *testing.T) {
 
   fmt.Printf("Test: Basic put/puthash/get ...\n")
 /*
-  pv := ck.Put(1, "x")
+  pv := ck.Put(1, 1,"x")
 
   
   ov := ""
@@ -73,21 +73,21 @@ func TestBasic(t *testing.T) {
     t.Fatalf("wrong value; expected %s got %s", ov, pv)
   }
 */
-  ck.Put(1, "aa")
-  check(t, ck, 1, "aa")
-  fmt.Printf("ck.Put(1,aa) correct... \n")
+  ck.Put(1,1, "aa")
+  check(t, ck, 1,1, "aa")
+  fmt.Printf("ck.Put(1,1,aa) correct... \n")
   
   
-  ck.Put(1, "aaa")
-  check(t, ck, 1, "aaa") 
-  check(t, cka[1], 1, "aaa")
-  check(t, cka[2], 1, "aaa")
+  ck.Put(1,1, "aaa")
+  check(t, ck, 1,1, "aaa") 
+  check(t, cka[1], 1,1, "aaa")
+  check(t, cka[2], 1,1, "aaa")
  fmt.Printf("ck.Put(1,aaa) correct... \n")
  
-  cka[1].Put(1, "b")
-  check(t, cka[1], 1, "b") 
- // check(t, ck, 1, "b") 
- // check(t, cka[2], 1, "b")
+  cka[1].Put(1,1, "b")
+  check(t, cka[1], 1,1, "b") 
+ // check(t, ck, 1, 1,"b") 
+ // check(t, cka[2], 1,1, "b")
 
   fmt.Printf("  ... Passed\n")
   fmt.Printf("Test: Concurrent clients ...\n")
@@ -102,9 +102,9 @@ func TestBasic(t *testing.T) {
         ci := (rand.Int() % nservers)
         myck := MakeClerk([]string{kvh[ci]})
         if (rand.Int() % 1000) < 500 {
-          myck.Put(2, strconv.Itoa(rand.Int()))
+          myck.Put(2,2,strconv.Itoa(rand.Int()))
         } else {
-          myck.Get(2)
+          myck.Get(2,2)
         }
       }(nth)
     }
@@ -113,7 +113,7 @@ func TestBasic(t *testing.T) {
     }
     var va [nservers]string
     for i := 0; i < nservers; i++ {
-      va[i] = cka[i].Get(2)
+      va[i] = cka[i].Get(2,2)
       if va[i] != va[0] {
         t.Fatalf("mismatch, va[0] is ", va[0], "BUT va[i] is ", va[i])
       }
@@ -152,20 +152,20 @@ func TestBasicDifferentIndex(t *testing.T) {
 
   fmt.Printf("Test: Basic put/get for different indices ...\n")
 
-  ck.Put(1, "aa")
-  check(t, ck, 1, "aa")
-  fmt.Printf("ck.Put(1,aa) correct... \n")
+  ck.Put(1,2, "aa")
+  check(t, ck, 1,2, "aa")
+  fmt.Printf("ck.Put(1,2,aa) correct... \n")
   
   
-  ck.Put(1, "aaa")
-  check(t, ck, 1, "aaa")
-    check(t, cka[1], 1, "aaa")
-  check(t, cka[2], 1, "aaa")
+  ck.Put(2, 2,"aaa")
+  check(t, ck, 2,2, "aaa")
+    check(t, cka[1], 2,2, "aaa")
+  check(t, cka[2],2,2, "aaa")
    
-   ck.Put(2, "b")
-     check(t, ck, 2, "b") 
-   check(t, cka[2], 2, "b")
-       check(t, cka[1], 2, "b") 
+   ck.Put(3,3, "b")
+     check(t, ck, 3,3, "b") 
+   check(t, cka[2], 3,3, "b")
+       check(t, cka[1], 3,3, "b") 
   fmt.Printf("  ... Passed\n")
 
   time.Sleep(1 * time.Second)
@@ -321,17 +321,17 @@ func TestPartition(t *testing.T) {
   fmt.Printf("Test: No partition ...\n")
 
   part(t, tag, nservers, []int{0,1,2,3,4}, []int{}, []int{})
-  cka[0].Put(1, "12")
-  cka[2].Put(1, "13")
-  check(t, cka[3], 1, "13")
+  cka[0].Put(1,2, "12")
+  cka[2].Put(1, 2,"13")
+  check(t, cka[3], 1, 2,"13")
 
   fmt.Printf("  ... Passed\n")
 
   fmt.Printf("Test: Progress in majority ...\n")
 
   part(t, tag, nservers, []int{2,3,4}, []int{0,1}, []int{})
-  cka[2].Put(1, "14")
-  check(t, cka[4], 1, "14")
+  cka[2].Put(1,2, "14")
+  check(t, cka[4], 1, 2,"14")
 
   fmt.Printf("  ... Passed\n")
 
@@ -340,11 +340,11 @@ func TestPartition(t *testing.T) {
   done0 := false
   done1 := false
   go func() {
-    cka[0].Put(1, "15")
+    cka[0].Put(1, 2,"15")
     done0 = true
   }()
   go func() {
-    cka[1].Get(1)
+    cka[1].Get(1,2)
     done1 = true
   }()
   time.Sleep(time.Second)
@@ -354,9 +354,9 @@ func TestPartition(t *testing.T) {
   if done1 {
     t.Fatalf("Get in minority completed")
   }
-  check(t, cka[4], 1, "14")
-  cka[3].Put(1, "16")
-  check(t, cka[4], 1, "16")
+  check(t, cka[4], 1, 2,"14")
+  cka[3].Put(1, 2,"16")
+  check(t, cka[4], 1,2, "16")
 
   fmt.Printf("  ... Passed\n")
   //2, 3, 4 has 16, 0,1, has 12
@@ -377,9 +377,9 @@ func TestPartition(t *testing.T) {
     t.Fatalf("Get in minority completed")
   }
 
-  check(t, cka[4], 1, "15")
+  check(t, cka[4], 1, 2,"15")
 
-  check(t, cka[0], 1, "15")
+  check(t, cka[0], 1,2, "15")
  
   part(t, tag, nservers, []int{0,1,2}, []int{3,4}, []int{})
   for iters := 0; iters < 100; iters++ {
@@ -392,7 +392,7 @@ func TestPartition(t *testing.T) {
     t.Fatalf("Get did not complete")
   }
      
-  check(t, cka[1], 1, "15")
+  check(t, cka[1], 1,2, "15")
 
   fmt.Printf("  ... Passed\n")
 }
@@ -428,14 +428,14 @@ func TestUnreliable(t *testing.T) {
 
   fmt.Printf("Test: Basic put/get, unreliable ...\n")
 
-  ck.Put(2, "aa")
-  check(t, ck, 2, "aa")
+  ck.Put(2, 2,"aa")
+  check(t, ck, 2,2, "aa")
 
-  cka[1].Put(2, "aaa")
+  cka[1].Put(2,2, "aaa")
 
-  check(t, cka[2], 2, "aaa")
-  check(t, cka[1], 2, "aaa")
-  check(t, ck,2, "aaa")
+  check(t, cka[2], 2,2, "aaa")
+  check(t, cka[1], 2,2, "aaa")
+  check(t, ck,2, 2,"aaa")
 
   fmt.Printf("  ... Passed\n")
 
@@ -458,21 +458,21 @@ func TestUnreliable(t *testing.T) {
         myck := MakeClerk(sa)
         key := me
 
-        myck.Put(key, "0")
-        pv := myck.Get(key)
+        myck.Put(key,key, "0")
+        pv := myck.Get(key,key)
         if pv!="0" {
           t.Fatalf("wrong value; expected %s but got %s", pv, "0")
         }
-        myck.Put(key, "1")
-        pv = myck.Get(key)
+        myck.Put(key, key,"1")
+        pv = myck.Get(key,key)
         if pv != "1" {
           t.Fatalf("wrong value; expected %s but got %s", pv, "1")
         }
-        myck.Put(key, "2")
+        myck.Put(key,key, "2")
      
 
         time.Sleep(100 * time.Millisecond)
-        if myck.Get(key) != "2" {
+        if myck.Get(key,key) != "2" {
           t.Fatalf("wrong value")
         }
 
@@ -506,9 +506,9 @@ func TestUnreliable(t *testing.T) {
         }
         myck := MakeClerk(sa)
         if (rand.Int() % 1000) < 500 {
-          myck.Put(3, strconv.Itoa(rand.Int()))
+          myck.Put(3, 3,strconv.Itoa(rand.Int()))
         } else {
-          myck.Get(3)
+          myck.Get(3,3)
         }
       }(cli)
     }
@@ -518,7 +518,7 @@ func TestUnreliable(t *testing.T) {
 
     var va [nservers]string
     for i := 0; i < nservers; i++ {
-      va[i] = cka[i].Get(3)
+      va[i] = cka[i].Get(3,3)
       if va[i] != va[0] {
         t.Fatalf("mismatch; 0 got %v, %v got %v", va[0], i, va[i])
       }
@@ -558,7 +558,7 @@ func TestHole(t *testing.T) {
     part(t, tag, nservers, []int{0,1,2,3,4}, []int{}, []int{})
 
     ck2 := MakeClerk([]string{port(tag, 2)})
-    ck2.Put(15, "q")
+    ck2.Put(15, 2,"q")
 
     done := false
     const nclients = 10
@@ -574,15 +574,15 @@ func TestHole(t *testing.T) {
         }
         key := cli
         last := ""
-        cka[0].Put(key, last)
+        cka[0].Put(key,key, last)
         for done == false {
           ci := (rand.Int() % 2)
           if (rand.Int() % 1000) < 500 {
             nv := strconv.Itoa(rand.Int())
-            cka[ci].Put(key, nv)
+            cka[ci].Put(key,key, nv)
             last = nv
           } else {
-            v := cka[ci].Get(key)
+            v := cka[ci].Get(key,key)
             if v != last {
               t.Fatalf("%v: wrong value, key %v, wanted %v, got %v",
                 cli, key, last, v)
@@ -600,9 +600,9 @@ func TestHole(t *testing.T) {
     // can majority partition make progress even though
     // minority servers were interrupted in the middle of
     // paxos agreements?
-    check(t, ck2, 15, "q")
-    ck2.Put(15, "qq")
-    check(t, ck2, 15, "qq")
+    check(t, ck2, 15, 2,"q")
+    ck2.Put(15,2, "qq")
+    check(t, ck2, 15,2, "qq")
       
     // restore network, wait for all threads to exit.
     part(t, tag, nservers, []int{0,1,2,3,4}, []int{}, []int{})
@@ -615,7 +615,7 @@ func TestHole(t *testing.T) {
     if ok == false {
       t.Fatal("something is wrong")
     }
-    check(t, ck2, 15, "qq")
+    check(t, ck2, 15, 2,"qq")
   }
 
   fmt.Printf("  ... Passed\n")

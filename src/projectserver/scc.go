@@ -18,7 +18,7 @@ func (kv *KVPaxos) findSCC(ins_num int) string {
 	op :=kv.opLogs[ins_num]
 	//if already executed, could directly return the value in the log.
     if (op.Status== "EXECUTED"){
-	    return op.Value
+	    return op.ClientStroke.Color
 	}
 	index := 1
 	//find SCCs using Tarjan's algorithm
@@ -45,7 +45,6 @@ func (kv *KVPaxos) strongconnect(v *Operation, index *int,seq int) (bool,string)
 	//index is incremented on each strongconnect call
 	*index = *index + 1
 
-     
 	l := len(kv.stack)
 	if l == cap(kv.stack) {
 	newSlice := make([]Node, l, 2*l)
@@ -60,18 +59,14 @@ func (kv *KVPaxos) strongconnect(v *Operation, index *int,seq int) (bool,string)
 	for i := 0; i <len(inst); i++ {
 		// wait for the operationi committed.
 	 	kv.logsMu.Lock()
-		w,ok := kv.opLogs[inst[i]]
-		
+		w,ok := kv.opLogs[inst[i]]		
 	 	kv.logsMu.Unlock()
 	    for (!ok){
 	        w,ok = kv.opLogs[inst[i]]
             time.Sleep(1000 * 1000)
         }
-        
-        
-        
-        //if this is v
-          	
+              
+        //if this is v         	
 	    if w.Index == 0 {
             Bool,Result:=kv.strongconnect(&w, index,i)
 			if !Bool {
@@ -91,24 +86,22 @@ func (kv *KVPaxos) strongconnect(v *Operation, index *int,seq int) (bool,string)
 			}
 		}
 	
-	    kv.stackMu.Lock()
-	    
-   Result:=""
-	if v.Lowlink == v.Index {
-		//found SCC
-		list := kv.stack[l:len(kv.stack)]
-
-		//execute commands in the increasing order of the Seq field
-		sort.Sort(nodeArray(list))
-		for _, w := range list {
-		//execute operation with instance number
-		Result=kv.ExecuteOp(w.seq)
-		//fmt.Printf("Server %v executed instance %v \n", kv.me, w.seq)
-		//fmt.Printf("Server %v log:%v \n", kv.me, kv.opLogs)
+	    kv.stackMu.Lock()	    
+		Result:=""
+		if v.Lowlink == v.Index {
+			//found SCC
+			list := kv.stack[l:len(kv.stack)]
+			//execute commands in the increasing order of the Seq field
+			sort.Sort(nodeArray(list))
+			for _, w := range list {
+			//execute operation with instance number
+			Result=kv.ExecuteOp(w.seq)
+			//fmt.Printf("Server %v executed instance %v \n", kv.me, w.seq)
+			//fmt.Printf("Server %v log:%v \n", kv.me, kv.opLogs)
+			}
+			kv.stack = kv.stack[0:l]
 		}
-		kv.stack = kv.stack[0:l]
-	}
-	    kv.stackMu.Unlock()
+			kv.stackMu.Unlock()
 	return true,Result
 }
 

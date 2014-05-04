@@ -47,8 +47,8 @@ type Paxos struct {
   me int // index into peers[]
 
   // Your data here.
-  acceptorStateMap map[int]AcceptorState  //map each instance to an acceptor state(np,na,va)
-  statusMap map[int]Status   //map each instance to Status
+  acceptorStateMap map[int]AcceptorState  // map each instance to an acceptor state(np,na,va)
+  statusMap map[int]Status   //log:map each instance to Status
   max int
   peersDoneValue []int
   min int
@@ -63,6 +63,7 @@ func (px *Paxos) Decide(args *DecideArgs, reply *DecideReply) error {
   px.UpdateMax(args.SeqNo)
   if args.SeqNo >= px.min {
     px.statusMap[args.SeqNo] = Status{value:args.Value, done:true}
+    
   }
   px.peersDoneValue[args.Me] = args.MaxDoneSeq
   px.CleanMemory()
@@ -218,6 +219,8 @@ func Make(peers []string, me int, rpcs *rpc.Server) *Paxos {
   //~~~~~~~~~~~~~~~~~~~~~~ Your initialization code here.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   px.acceptorStateMap = make(map[int]AcceptorState)
   px.statusMap = make(map[int]Status)
+  px.keytoins=make(map[int][]int)
+  
   px.max = -1
   px.min = 0
   length := len(peers)

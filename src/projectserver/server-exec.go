@@ -5,7 +5,6 @@ import "time"
 
 //A seperate execution thread, one for each server. 
 //Keep to see if there is any new instances committed and execute the new instances.
-
 func (kv *KVPaxos) ExecutionThread() {
     num :=kv.maxExecutedOpNum
 	for (!kv.dead){
@@ -48,13 +47,8 @@ func (kv *KVPaxos) ExecuteUntil(ins_num int) string {
 			}
 			//Important: Execute this operation!
 			val = kv.findSCC(i)
-			epoch_diff :=int(ins_num/kv.snapshot_interval) - int(kv.maxExecutedOpNum/kv.snapshot_interval)
-			if epoch_diff<1{
-			    kv.board_snapshot=kv.board
-				done:=int(ins_num/kv.snapshot_interval)*kv.snapshot_interval-1
-				//Flush to disk persistant storage
-				kv.cleanMemory(done) //delete instances up to done
-			}			
+			//TODO:Flush to disk persistant storage
+			//kv.cleanMemory(done) //delete instances up to done		
 			kv.maxExecutedOpNum = ins_num
 		}	
 		return val
@@ -71,22 +65,22 @@ func (kv *KVPaxos) ExecuteOp(ins_num int) string{
 			kv.MarkAsExecuted(ins_num)
 			return ""
 		case "get":
-		    key := op.Key
-            value:= kv.board[key]
+		    x:=op.ClientStroke.Start_x
+			y:=op.ClientStroke.Start_y
+		    key := x*kv.boardWidth+y
+            color:= kv.testMapColor[key]
             request_state, seen_client := kv.checkDuplicate[op.ClientId]
 		    if seen_client {
 		      if op.OperationId > request_state.OperationId { 
 		        //the operation is new, so we should update the client's last RPC information
-		        kv.checkDuplicate[op.ClientId] = CachedRequestState{op.OperationId, value}
+		        kv.checkDuplicate[op.ClientId] = CachedRequestState{op.OperationId, color}
 		      }		      
 		    }			       
-		    op.Value=value
+		  //  op.ClientStroke=Stroke{x,y,0,0,color}
 			kv.opLogs[ins_num]=op	
 			kv.MarkAsExecuted(ins_num)
-	        return value  
-		case "put":
-			key:= op.Key
-			value := op.Value
+	        return color 
+		case "put":						
 			OperationId := op.OperationId
 			//check whether the action is duplicated
 			duplicated := false
@@ -101,10 +95,14 @@ func (kv *KVPaxos) ExecuteOp(ins_num int) string{
 			    }
 			}
 			if !duplicated {
-				old_value:= kv.board[key]
-				kv.board[key] = value
-				result = old_value
-				kv.checkDuplicate[op.ClientId] = CachedRequestState{OperationId, result} 
+			    //update color in testmap
+				value := op.ClientStroke.Color
+				x:=op.ClientStroke.Start_x
+				y:=op.ClientStroke.Start_y
+				key := x*kv.boardWidth+y	
+				kv.testMapColor[key] = value
+				kv.checkDuplicate[op.ClientId] = CachedRequestState{OperationId, value} 
+				result=value
 				kv.MarkAsExecuted(ins_num)
 			}		
 			return result

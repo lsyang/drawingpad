@@ -11,7 +11,7 @@ func main() {
 
   runtime.GOMAXPROCS(4)
 
-  const nservers = 1
+  const nservers = 2
   var kva []*projectserver.KVPaxos = make([]*projectserver.KVPaxos, nservers)
   var kvh []string = make([]string, nservers)
   //defer cleanup(kva)

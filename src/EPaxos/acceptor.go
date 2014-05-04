@@ -23,7 +23,7 @@ func (px *Paxos) Prepare(args *PrepareArgs, reply *PrepareReply) error {
   interf,exist := px.keytoins[op_key]
   if (exist){
 	  sort.Ints(interf)
-	 self_max:= px.maxSeqNum(interf)+1
+	  self_max:= px.maxSeqNum(interf)+1 
 	  max_seq_num, deps, _= px.mergeAttributes(self_max, interf, SeqNum, Deps)
   }
   
@@ -34,6 +34,7 @@ func (px *Paxos) Prepare(args *PrepareArgs, reply *PrepareReply) error {
     if ok{
       if ProposalNo > state.n_p {
         px.acceptorStateMap[SeqNo] = AcceptorState{ProposalNo, state.n_a, state.v_a}
+        
         reply.HighestPrepareNo = state.n_p
         reply.HighestProposalNo = state.n_a
         reply.Value = state.v_a
@@ -47,7 +48,8 @@ func (px *Paxos) Prepare(args *PrepareArgs, reply *PrepareReply) error {
         reply.Ok = false
       }
     } else {
-      px.acceptorStateMap[SeqNo] = AcceptorState{ProposalNo, 0, nil}
+      px.acceptorStateMap[SeqNo] = AcceptorState{ProposalNo, 0, nil}     
+      
       reply.HighestPrepareNo = 0
       reply.HighestProposalNo = 0
       reply.Value = nil
@@ -102,7 +104,7 @@ func (px *Paxos) mergeAttributes(seq1 int, deps1 []int, seq2 int, deps2 []int) (
 		}
 	}
 	length := len(deps2)
-	l := length
+	
 	loop_list := deps2
 	keep_list := deps1
 	    
@@ -124,12 +126,18 @@ func (px *Paxos) mergeAttributes(seq1 int, deps1 []int, seq2 int, deps2 []int) (
         	if b == a { valueExist= true}
    		}   		
 		if !valueExist{
-		   keep_list[l]=loop_list[i]
-		   l++
+			 equal=false
+	 newSlice := make([]int, len(keep_list)+1, cap(keep_list)+1)
+     copy(newSlice, keep_list)
+     newSlice[len(keep_list)]=loop_list[i] 
+     
+		   keep_list=newSlice
+		   
 		}
 	}
-	sort.Ints(loop_list)
-	return seq1, loop_list, equal
+	sort.Ints( keep_list)
+	
+	return seq1,  keep_list, equal
 }
 
 /*

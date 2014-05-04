@@ -6,15 +6,28 @@ func (px *Paxos) DriveProposing(seq int, v interface{}, op_key int) {
   maxProposalNo := 0
   length := len(px.peers)
   seqNum:= 1
-  var exist bool
-  deps :=make([]int,10)
-  deps,exist = px.keytoins[op_key]
-  if exist {
-	  sort.Ints(deps)
-	 seqNum= px.maxSeqNum(deps)+1
-  }
-  px.statusMap[seq] = Status{value:nil, done:false, Key:op_key, deps:deps, seqNum:seqNum}
 
+  deps,exist := px.keytoins[op_key]
+ 
+  if exist {
+	 sort.Ints(deps)
+	 seqNum= px.maxSeqNum(deps)+1
+	 
+	 newSlice := make([]int, len(deps)+1, cap(deps)+1)
+     copy(newSlice, deps)
+     newSlice[len(deps)]=seq 
+    
+	 px.keytoins[op_key]=newSlice
+  }else{
+  	  px.keytoins[op_key]=[]int{seq}
+  	
+  }
+  status:= Status{value:nil, done:false, Key:op_key, deps:deps, seqNum:seqNum}
+  px.statusMap[seq] =status
+
+
+  
+  
   for {
     //fmt.Printf("I am %d, seq instance %d, I am now starting a job :)\n", px.me, seq)
     px.mu.Lock()
@@ -51,6 +64,7 @@ func (px *Paxos) DriveProposing(seq int, v interface{}, op_key int) {
         } 
         if preparereply.Ok == true {
             prepare_ok_count += 1
+            //TODO: MERGE ATRRIBUTES AND TEST IF THEY ARE SAME
             
             if preparereply.HighestProposalNo > n_a {
 	            n_a = preparereply.HighestProposalNo

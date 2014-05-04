@@ -38,13 +38,13 @@ type KVPaxos struct {
   px *epaxos.Paxos
 
   stack []Node
- 
-  board [1000*1000]string //the current board
-  board_snapshot [1000*1000]string
-  snapshot_interval int
+  //board [1000*1000]string //the current board
+  //board_snapshot [1000*1000]string
+  //snapshot_interval int
   
   opLogs map[int]Operation
-  //maxCommittedOpNum int //the largest Operation that has been committed
+  boardWidth int
+  testMapColor map[int]string //map a position (x*boardWidth+y) to color
   maxExecutedOpNum int//the largest Operation that has been executed
   checkDuplicate map[int64]CachedRequestState // mapping clientId of a client to her last executed RPC's CachedRequestState.
 } 
@@ -52,74 +52,64 @@ type KVPaxos struct {
 
 //Return the boarad_snapshot(optional) and operations that the client misses
 func (kv *KVPaxos) GetUpdate(args *GetUpdateArgs, reply *GetUpdateReply) error {
-	// kv.mu.Lock()
-	// defer kv.mu.Unlock()	
+	kv.mu.Lock()
+	defer kv.mu.Unlock()	
 	ck_newest_op_num := args.Client_newest_op_num
 	if (ck_newest_op_num>=kv.maxExecutedOpNum){
 		//the client already has the newest log
-		reply.Has_map=false
 		reply.Has_operation=false
 		return nil
 	}
-	//Check if client is one epoch behind of the server
-	epoch_diff :=int(ck_newest_op_num/kv.snapshot_interval) - int(kv.maxExecutedOpNum/kv.snapshot_interval)
-	if epoch_diff>0{
-		reply.Has_map=true
-		reply.Board=kv.board_snapshot
-		len := kv.maxExecutedOpNum%kv.snapshot_interval
-		missed_ops := make([]Operation,len)
-		for i := 0; i < len; i++ {  //A simple check: maxExecutedOpNum=2, i=0,1,2, len=3; index=0,1,2
-			index := kv.maxExecutedOpNum-(len-1-i)
-			missed_ops[i] = kv.opLogs[index]
-		}
-		reply.Has_operation=true
-		reply.New_operations=missed_ops
-	}else{
-		reply.Has_map=false
-		len := kv.maxExecutedOpNum-ck_newest_op_num
-		missed_ops := make([]Operation,len)
-		for i := 0; i < len; i++ {
-			index := kv.maxExecutedOpNum-(len-1-i)
-			missed_ops[i] = kv.opLogs[index]
-		}
-		reply.Has_operation=true
-		reply.New_operations=missed_ops
+	len := kv.maxExecutedOpNum-ck_newest_op_num
+	missed_ops := make([]Operation,len)
+	for i := 0; i < len; i++ {
+		index := kv.maxExecutedOpNum-(len-1-i)
+		missed_ops[i] = kv.opLogs[index]
 	}
+	reply.Has_operation=true
+	reply.New_operations=missed_ops
 	return nil
 }
 
 
 //Return nil if instance is committed
 func (kv *KVPaxos) Put(args *PutArgs, reply *PutReply) error {
-	// kv.mu.Lock()
-	// defer kv.mu.Unlock()
-  op := Operation{OpName:"put", Key:args.Key, Value: args.Value,  OperationId:args.RequestID, ClientId :args.ClientID,Index:0, Lowlink:0}
-  seq := kv.CommitOp(op)
-  go kv.ExecuteUntil(seq)
-  reply.Err = ""
-  return nil
+	kv.mu.Lock()
+	defer kv.mu.Unlock()
+	op := Operation{OpName:"put", ClientStroke:args.ClientStroke,OperationId:args.RequestID, ClientId :args.ClientID,Index:0, Lowlink:0}
+	seq := kv.CommitOp(op)
+	go kv.ExecuteUntil(seq)
+	reply.Err = ""
+	//transfer the operations
+	ck_newest_op_num := args.Client_newest_op_num
+	if (ck_newest_op_num>=kv.maxExecutedOpNum){
+		//the client already has the newest log
+		reply.Has_operation=false
+		return nil
+	}
+	len := kv.maxExecutedOpNum-ck_newest_op_num
+	missed_ops := make([]Operation,len)
+	for i := 0; i < len; i++ {
+		index := kv.maxExecutedOpNum-(len-1-i)
+		missed_ops[i] = kv.opLogs[index]
+	}
+	reply.Has_operation=true
+	reply.New_operations=missed_ops
+	return nil
 }
 
 //For testing only
 //Need dependency list
 func (kv *KVPaxos) Get(args *GetArgs, reply *GetReply) error {
- kv.mu.Lock()
- defer kv.mu.Unlock()
-	
- op := Operation{OpName:"get", Key:args.Key, Value:"", OperationId:args.RequestID, ClientId :args.ClientID,	Index:0, Lowlink:0}
- seq := kv.CommitOp(op)
- 
-   val := kv.ExecuteUntil(seq)
-  /*
-   *  opInLogs:=kv.opLogs[seq]
-  for (opInLogs.Status!="EXECUTED"){
-     opInLogs=kv.opLogs[seq]
-     fmt.Println()
-  }
-  */
-   reply.Value=val
-   reply.Err = ""
-   return nil
+	kv.mu.Lock()
+	defer kv.mu.Unlock()
+	stroke :=Stroke{Start_x:args.Start_x,Start_y:args.Start_y}
+	op := Operation{OpName:"get", ClientStroke:stroke, OperationId:args.RequestID, ClientId :args.ClientID,	Index:0, Lowlink:0}
+	seq := kv.CommitOp(op)
+	val := kv.ExecuteUntil(seq)
+	reply.Value=val
+	reply.Err = ""
+	return nil
 }
 
 
@@ -127,7 +117,8 @@ func (kv *KVPaxos) Get(args *GetArgs, reply *GetReply) error {
 func (kv *KVPaxos) CommitOp(op Operation) int {
   for kv.dead == false {
     instance := kv.px.Max() + 1 //try to make an agreement using sequence number instance
-    kv.px.Start(instance, op, op.Key)
+	key:=op.ClientStroke.Start_x*kv.boardWidth+op.ClientStroke.Start_y
+    kv.px.Start(instance, op,key)
     var agreed_op Operation
     var decided bool
     //waiting for the result
@@ -157,8 +148,8 @@ func (kv *KVPaxos) CommitOp(op Operation) int {
 
 //Insert an Nop, return the actual operation agreed at that sequence number
 func (kv *KVPaxos) InsertNop(instance int) Operation{
-  op := Operation{OpName:"nop", Key:-1, Value:"",  OperationId:0, ClientId :0,Index:0, Lowlink:0}
-  kv.px.Start(instance, op, op.Key)
+  op := Operation{OpName:"nop", OperationId:0, ClientId :0,Index:0, Lowlink:0}
+  kv.px.Start(instance, op,0)
   var agreed_op Operation
   var decided bool
   //waiting for the result
@@ -212,14 +203,19 @@ func StartServer(servers []string, me int) *KVPaxos {
   kv := new(KVPaxos)
   kv.me = me
   
-
+/*
   // TODO: Your initialization code here.
-  //TODO: go kv.ExecutionThread()
   for i:=0;i<1000*1000;i++{
 	kv.board[i] = "0"
 	kv.board_snapshot[i] = "0"
   }
-  kv.snapshot_interval=1000
+ // kv.snapshot_interval=1000
+ */
+ 
+ 
+  kv.boardWidth=1000
+  kv.testMapColor=make(map[int]string) //map a position (x*boardWidth+y) to color
+ 
   kv.opLogs = make(map[int]Operation)
   kv.maxExecutedOpNum = -1
   kv.checkDuplicate = make(map[int64]CachedRequestState)

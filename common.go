@@ -25,14 +25,13 @@ type PutReply struct{ //same as GetUpdateReply
 }
 
 type GetArgs struct{
-    Start_x int
-	Start_y int
+    SeqNum int
     ClientID int64
     RequestID int64
 }
-type GetReply struct{ 
+type GetReply struct{ //same as GetUpdateReply
     Err string
-    Value string
+    ClientStroke Stroke
 }
 
 
