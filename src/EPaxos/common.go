@@ -1,32 +1,46 @@
-package EPaxos
+package epaxos
 
-type GetUpdateArgs struct{
-	Client_newest_op_num int
-	ClientID int64
-	RequestID int64
-}
 
-type GetUpdateReply struct{
-	Has_map bool 
-	Has_operation bool 
-	Board []string //key: pixel index, value: color value
-	New_operations []Operation
+type PrepareArgs struct {
+  SeqNo int
+  ProposalNo int
+  Key int
+  Deps []int
+  SeqNum int
 }
 
-type PutArgs struct{
-	Client_newest_op_num int
-	New_operation Operation
-	ClientID int64
-	RequestID int64
+type PrepareReply struct {
+  HighestPrepareNo int
+  HighestProposalNo int
+  Value interface{}
+  Ok bool
+  Deps []int
+  SeqNum int
 }
-type PutReply struct{ //same as GetUpdateReply
-	Has_map bool 
-	Has_operation bool
-	Board []string
-	New_operations []Operation
+
+type AcceptArgs struct {
+  SeqNo int
+  ProposalNo int
+  Value interface{}
+  Deps []int
+  SeqNum int
 }
-type Operation struct{
-	Key int //pixel index
-	Value string //color value
-	Operation_num int
+
+type AcceptReply struct {
+  Ok bool
 }
+
+type DecideArgs struct {
+  SeqNo int
+  Value interface{}
+  Me int
+  MaxDoneSeq int
+  Deps []int
+  SeqNum int
+}
+
+type DecideReply struct {
+  Ok bool
+}
+
+

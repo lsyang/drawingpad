@@ -1,5 +1,5 @@
 /* tick-tock.go */
-package main
+package EPaxos
 //package EPaxos
 
 import (
@@ -8,13 +8,8 @@ import (
         "net/http"
         "time"
         "encoding/json"
-        "EPaxos"
         "strconv"
 )
-
-type Line struct{
-  Keys []int
-}
 
 // Content for the main html page..
 var page =
@@ -114,7 +109,7 @@ func drawUpdate(w http.ResponseWriter, r *http.Request) {
   fmt.Fprint(w, string(b))
 }
 
-func main() {
+func StartBrowser() {
         http.Handle("/resources/", http.StripPrefix("/resources/", http.FileServer(http.Dir("resources")))) 
         http.HandleFunc("/time", handler)
         http.HandleFunc("/stroke", handlerStroke)

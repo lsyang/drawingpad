@@ -86,7 +86,7 @@ var __slice = Array.prototype.slice;
     sketch.clear()
     //draw canvas
     for(var i=0; i<obj.Board.length; i++){
-      //sketch.executeDraw(i,obj.Board[i])
+      sketch.executeDraw(i,obj.Board[i])
     }
    }
    if(obj.Has_operation){
@@ -151,7 +151,6 @@ var __slice = Array.prototype.slice;
   Sketch.prototype.put=function(key, val){
     //put key value into the server
     $.post(window.location.origin+"/stroke", {Key: key, Value: val}, function(data, status) {
-      console.log("getting update")
          obj = JSON.parse(data);
          var sketch = sketch_object;
          if(obj.Has_map){ //clear canvas
@@ -188,7 +187,7 @@ var __slice = Array.prototype.slice;
       });
       action.events.push({
         x: _x,
-        y: _y+10,
+        y: _y+1,
       });
       sketch.actions.push(action)
       sketch.redraw()

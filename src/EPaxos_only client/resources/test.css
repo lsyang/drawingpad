@@ -1,0 +1,35 @@
+body { font-family: "Open Sans", sans-serif; color: #444; }
+h1, h2, h3, h4 { font-family: Yellowtail; font-weight: normal; color: #06a; }
+
+#wrapper { width: 800px; margin: 0 auto; }
+
+header { text-align: center; }
+header h1 { font-size: 46px; text-align: center; margin: 15px 10px; }
+
+article h1 { font-size: 26px; margin: 0 0 15px; }
+
+article canvas {
+width: 800px;
+height: 300px;
+border: 1px solid #ccc;
+}
+
+pre.source {
+background: #e5eeee;
+padding: 10px 20px;
+width: 760px;
+overflow-x: auto;
+border: 1px solid #acc;
+}
+
+code { background: #cff; }
+
+.tools { margin-bottom: 10px; }
+.tools a {
+border: 1px solid black; height: 30px; line-height: 30px; padding: 0 10px; vertical-align: middle; text-align: center; text-decoration: none; display: inline-block; color: black; font-weight: bold;
+}
+
+canvas {
+  border: 5px solid black;
+  }
+
