@@ -53,6 +53,7 @@ type Stroke struct{
   End_x int
   End_y int
   Color string
+  Size int
 }
 
 type Node struct {
