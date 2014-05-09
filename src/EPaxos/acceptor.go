@@ -11,11 +11,12 @@ type AcceptorState struct {
 func (px *Paxos) Prepare(args *PrepareArgs, reply *PrepareReply) error {
   px.mu.Lock()
   defer px.mu.Unlock()
-
   SeqNo := args.SeqNo
   ProposalNo := args.ProposalNo
+  //for e_paxos
   Deps :=args.Deps
-  SeqNum  :=args.SeqNum  
+  sort.Ints(Deps)
+  SeqNum :=args.SeqNum  
   op_key :=args.Key
   
   max_seq_num:=1
@@ -33,8 +34,7 @@ func (px *Paxos) Prepare(args *PrepareArgs, reply *PrepareReply) error {
   if SeqNo >= px.min {
     if ok{
       if ProposalNo > state.n_p {
-        px.acceptorStateMap[SeqNo] = AcceptorState{ProposalNo, state.n_a, state.v_a}
-        
+        px.acceptorStateMap[SeqNo] = AcceptorState{ProposalNo, state.n_a, state.v_a}       
         reply.HighestPrepareNo = state.n_p
         reply.HighestProposalNo = state.n_a
         reply.Value = state.v_a
@@ -48,8 +48,7 @@ func (px *Paxos) Prepare(args *PrepareArgs, reply *PrepareReply) error {
         reply.Ok = false
       }
     } else {
-      px.acceptorStateMap[SeqNo] = AcceptorState{ProposalNo, 0, nil}     
-      
+      px.acceptorStateMap[SeqNo] = AcceptorState{ProposalNo, 0, nil}        
       reply.HighestPrepareNo = 0
       reply.HighestProposalNo = 0
       reply.Value = nil
@@ -73,10 +72,10 @@ func (px *Paxos) Accept(args *AcceptArgs, reply *AcceptReply) error {
   if SeqNo >= px.min {
     state, ok := px.acceptorStateMap[SeqNo]
     if ok && ProposalNo < state.n_p {
-      reply.Ok = false
+        reply.Ok = false
     } else {
-      px.acceptorStateMap[SeqNo] = AcceptorState{ProposalNo, ProposalNo, Value}
-      reply.Ok = true
+        px.acceptorStateMap[SeqNo] = AcceptorState{ProposalNo, ProposalNo, Value}
+        reply.Ok = true
     }
   } 
   return nil
@@ -93,7 +92,7 @@ func (px *Paxos) UpdateMax(seq int) {
 
 
 //Take the max of seq1 and seq2
-//Take the union of two lists deps1 and deps2
+//Take the union of two lists deps1 and deps2 and sort the list
 //Check if two maxs and two lists are strictly equal
 func (px *Paxos) mergeAttributes(seq1 int, deps1 []int, seq2 int, deps2 []int) (int, []int, bool) {
 	equal := true
@@ -127,26 +126,13 @@ func (px *Paxos) mergeAttributes(seq1 int, deps1 []int, seq2 int, deps2 []int) (
    		}   		
 		if !valueExist{
 			 equal=false
-	 newSlice := make([]int, len(keep_list)+1, cap(keep_list)+1)
-     copy(newSlice, keep_list)
-     newSlice[len(keep_list)]=loop_list[i] 
-     
-		   keep_list=newSlice
-		   
+			 newSlice := make([]int, len(keep_list)+1, cap(keep_list)+1)
+			 copy(newSlice, keep_list)
+			 newSlice[len(keep_list)]=loop_list[i] 
+             keep_list=newSlice		   
 		}
 	}
 	sort.Ints( keep_list)
 	
-	return seq1,  keep_list, equal
+	return seq1,keep_list, equal
 }
-
-/*
-func equal(deps1 []int, deps2 []int) bool {
-	for i := 0; i < len(deps1); i++ {
-		if deps1[i] != deps2[i] {
-			return false
-		}
-	}
-	return true
-}
-*/

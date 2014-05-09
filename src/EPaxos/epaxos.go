@@ -86,10 +86,9 @@ func (px *Paxos) Start(seq int, v interface{}, key int) {
   px.UpdateMax(seq)
   _, alreadyStart := px.statusMap[seq]
   if !alreadyStart && seq >= px.min {
-    
-    go func(){
-      px.DriveProposing(seq, v, key)
-    }() 
+     go func(){
+       px.DriveProposing(seq, v, key)
+     }() 
   }
   return
 }

@@ -5,8 +5,8 @@ type PrepareArgs struct {
   SeqNo int
   ProposalNo int
   Key int
-  Deps []int
   SeqNum int
+  Deps []int
 }
 
 type PrepareReply struct {
@@ -14,16 +14,16 @@ type PrepareReply struct {
   HighestProposalNo int
   Value interface{}
   Ok bool
-  Deps []int
   SeqNum int
+  Deps []int
 }
 
 type AcceptArgs struct {
   SeqNo int
   ProposalNo int
   Value interface{}
-  Deps []int
   SeqNum int
+  Deps []int
 }
 
 type AcceptReply struct {
@@ -35,8 +35,8 @@ type DecideArgs struct {
   Value interface{}
   Me int
   MaxDoneSeq int
-  Deps []int
   SeqNum int
+  Deps []int
 }
 
 type DecideReply struct {

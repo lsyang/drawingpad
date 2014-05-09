@@ -126,9 +126,9 @@ func handlerStroke(w http.ResponseWriter, r *http.Request){
   size,_:=strconv.Atoi(r.FormValue("size"))
   op:=projectserver.Stroke{x1,y1,x2,y2,col,size}
   //fmt.Println("%v,%v,%v,%v", x1,y1,x2,y2)
-  //ClientList[id].Put(op) //strokes won't be in order
+  ClientList[id].Put(op) //strokes won't be in order
   //fmt.Println(id)
-  ClientList[id].PutChan(op)
+  //ClientList[id].PutChan(op)
 }
 
 func drawUpdate(w http.ResponseWriter, r *http.Request) {
@@ -137,8 +137,8 @@ func drawUpdate(w http.ResponseWriter, r *http.Request) {
   //loop through to see if operation num is continous
   //update max_operation_num
   id,_:=strconv.Atoi(r.FormValue("id"))
-  //m:=ClientList[id].GetUpdate()
-  m:=ClientList[id].GetChan()
+  m:=ClientList[id].GetUpdate()
+  //m:=ClientList[id].GetChan()
   b, _ := json.Marshal(m)
   fmt.Fprint(w, string(b))
   

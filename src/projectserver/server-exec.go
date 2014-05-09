@@ -8,13 +8,16 @@ import "time"
 func (kv *KVPaxos) ExecutionThread() {
     num :=kv.maxExecutedOpNum
 	for (!kv.dead){
+		time.Sleep(10*time.Millisecond)
+		kv.mu.Lock()
         _,exist:=kv.opLogs[num+1]
 		if (!exist){
-			time.Sleep(100*time.Millisecond)
-		}else{  
-			kv.ExecuteUntil(num+1)
-			num +=1
-		}
+			// time.Sleep(10*time.Millisecond)
+			kv.InsertNop(num+1)
+        }   
+		kv.ExecuteUntil(num+1)
+		num +=1
+		kv.mu.Unlock()
    }
 }
   
@@ -66,7 +69,7 @@ func (kv *KVPaxos) ExecuteOp(ins_num int) string{
 			return ""
 		case "get":
 		    x:=op.ClientStroke.Start_x
-			y:=op.ClientStroke.Start_y
+			y:=op.ClientStroke.Start_x
 		    key := x*kv.boardWidth+y
             color:= kv.testMapColor[key]
             request_state, seen_client := kv.checkDuplicate[op.ClientId]
@@ -98,7 +101,7 @@ func (kv *KVPaxos) ExecuteOp(ins_num int) string{
 			    //update color in testmap
 				value := op.ClientStroke.Color
 				x:=op.ClientStroke.Start_x
-				y:=op.ClientStroke.Start_y
+				y:=op.ClientStroke.Start_x
 				key := x*kv.boardWidth+y	
 				kv.testMapColor[key] = value
 				kv.checkDuplicate[op.ClientId] = CachedRequestState{OperationId, value} 

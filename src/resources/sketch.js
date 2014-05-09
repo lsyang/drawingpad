@@ -45,7 +45,7 @@ var __slice = Array.prototype.slice;
         toolLinks: true,
         defaultTool: 'marker',
         defaultColor: '#000000',
-        defaultSize: 1
+        defaultSize: 3
       }, opts);
       this.painting = false;
       this.color = this.options.defaultColor;
@@ -84,9 +84,9 @@ var __slice = Array.prototype.slice;
   };
 
   Sketch.prototype.getUpdate=function() {
-    // if (ID==-1){
-    //   this.register()
-    // }
+    if (ID==-1){
+      this.register()
+    }
    $.post(window.location.origin+"/drawUpdate", {id: ID}, function(data, status) {
     //status = success
 
@@ -97,8 +97,10 @@ var __slice = Array.prototype.slice;
     console.log("getting update")
     for (var i=0; i<obj.New_operations.length; i++){
       var op=obj.New_operations[i]
-     // console.log(op)
+      //if op.OpName=="Put"{
+      console.log(op)
       sketch.executeDraw(op.ClientStroke.Start_x,op.ClientStroke.Start_y,op.ClientStroke.End_x,op.ClientStroke.End_y,op.ClientStroke.Color,op.ClientStroke.Size)
+    //}
     }
    }
   });
@@ -123,6 +125,7 @@ var __slice = Array.prototype.slice;
         y: y2,
       });
       sketch.actions.push(action)
+      console.log("drawing")
       sketch.redraw()
     };
 

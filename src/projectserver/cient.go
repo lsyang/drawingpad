@@ -100,9 +100,8 @@ func (ck *Clerk) GetUpdate() GetUpdateReply{
          ck.max_operation_num=operations[len(operations)-1].SeqNum
         }
         //break
-        time.Sleep(80 * time.Millisecond) //goes faster and throws away empty ops
         return reply
-        
+        //time.Sleep(80 * time.Millisecond) //goes faster and throws away empty ops
       }
     }
     time.Sleep(80 * time.Millisecond)

@@ -154,7 +154,7 @@ func (kv *KVPaxos) InsertNop(instance int) Operation{
   var decided bool
   //waiting for the result
   to := 10 * time.Millisecond
-  for kv.dead == false {
+  for !kv.dead {
     var v interface{}
     decided, v = kv.px.Status(instance)
     if decided {
@@ -234,7 +234,7 @@ func StartServer(servers []string, me int) *KVPaxos {
   }
   kv.l = l
  
-  // go kv.ExecutionThread()
+  //go kv.ExecutionThread()
   // please do not change any of the following code,
   // or do anything to subvert it.
   

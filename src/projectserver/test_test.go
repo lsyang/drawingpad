@@ -117,13 +117,10 @@ func TestBasic(t *testing.T) {
       if va[i] != va[0] {
         t.Fatalf("mismatch, va[0] is ", va[0], "BUT va[i] is ", va[i])
       }
-    }
-   
-   
+    } 
   }
 
   fmt.Printf("  ... Passed\n")
-
   time.Sleep(1 * time.Second)
 }
 
@@ -162,10 +159,10 @@ func TestBasicDifferentIndex(t *testing.T) {
     check(t, cka[1], 2,2, "aaa")
   check(t, cka[2],2,2, "aaa")
    
-   ck.Put(3,3, "b")
-     check(t, ck, 3,3, "b") 
-   check(t, cka[2], 3,3, "b")
-       check(t, cka[1], 3,3, "b") 
+	ck.Put(3,3, "b")
+	check(t, ck, 3,3, "b") 
+	check(t, cka[2], 3,3, "b")
+	check(t, cka[1], 3,3, "b") 
   fmt.Printf("  ... Passed\n")
 
   time.Sleep(1 * time.Second)
@@ -413,12 +410,8 @@ func TestUnreliable(t *testing.T) {
     kva[i] = StartServer(kvh, i)
     kva[i].unreliable = true
   }
-
-
-
+  
   ck := MakeClerk(kvh)
- 
- 
  
   var cka [nservers]*Clerk
   for i := 0; i < nservers; i++ {
@@ -621,7 +614,7 @@ func TestHole(t *testing.T) {
   fmt.Printf("  ... Passed\n")
 }
 
-/*
+
 func TestManyPartition(t *testing.T) {
   runtime.GOMAXPROCS(4)
 
@@ -691,27 +684,27 @@ func TestManyPartition(t *testing.T) {
       myck := MakeClerk(sa)
       key := cli
       last := ""
-      myck.Put(key, last)
+      myck.Put(key, key,last)
      
       for done == false {
         if (rand.Int() % 1000) < 500 {
           nv := strconv.Itoa(rand.Int())
-          myck.Put(key, nv)
-          v:=myck.Get(key)
+          myck.Put(key, key,nv)
+          v:=myck.Get(key,key)
           if v != nv {
             t.Fatalf("%v: puthash wrong value, key %v, wanted %v, got %v",
               cli, key, last, v)
           }
           last = v
         } else {
-          v := myck.Get(key)
+          v := myck.Get(key,key)
           if v != last {
             t.Fatalf("%v: get wrong value, key %v, wanted %v, got %v",
               cli, key, last, v)
           }
         }
       }
-      fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+     // fmt.Println(">>>>>>>>>>>>>>>>>>>>")
       ok = true
     } (xcli)
   }
@@ -729,15 +722,13 @@ func TestManyPartition(t *testing.T) {
   ok := true
   for i := 0; i < nclients; i++ {
   //i=0
-   //fmt.Println("?????????????????????????????????????????????????????????????????????????")
+   //fmt.Println("????????????????")
     z := <- ca[i]
-  //   fmt.Println("?????????????????????????????????????????????????????????????????????????")
-    ok = ok && z
-     
-  //}
+  //   fmt.Println("??????????????????")
+    ok = ok && z    
+  }
 
   if ok {
     fmt.Printf("  ... Passed\n")
   }
 }
-*/
