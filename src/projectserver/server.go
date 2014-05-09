@@ -234,7 +234,7 @@ func StartServer(servers []string, me int) *KVPaxos {
   }
   kv.l = l
  
-  //go kv.ExecutionThread()
+  go kv.ExecutionThread()
   // please do not change any of the following code,
   // or do anything to subvert it.
   

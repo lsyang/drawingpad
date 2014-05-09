@@ -110,24 +110,23 @@ func (ck *Clerk) GetUpdate() GetUpdateReply{
   //return reply
 }
 
-// func (ck *Clerk) Get(key int) string {
-//   // ck.mu.Lock()
-//   // defer ck.mu.Unlock()
-//   //increment the operationId to be the next one
-//   args := &GetArgs{key, ck.me, ck.requestID}
-//   for {
-//     //try sending request for all the servers
-//     for _, server := range ck.servers {
-//       reply := &GetReply{}
-//       ok := call(server, "KVPaxos.Get", args, reply)
-//       if ok == true && reply.Err == "" {
-//         ck.requestID++
-//         return reply.Value 
-//       }
-//     }
-//     time.Sleep(time.Second)
-//   }
-// }
+func (ck *Clerk) Get(start_x int,start_y int) string {
+  operationId := ck.requestID
+  //increment the operationId to be the next one
+  ck.requestID += 1
+  args := &GetArgs{start_x,start_y, ck.me, operationId}
+  for {
+    //try sending request for all the servers
+    for _, server := range ck.servers {
+      reply := &GetReply{}
+      ok := call(server, "KVPaxos.Get", args, reply)
+      if ok == true && reply.Err == "" {
+        return reply.Value 
+      }
+    }
+    time.Sleep(time.Second)
+  }
+}
 
 //
 // Put operation by client

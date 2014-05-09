@@ -6,19 +6,20 @@ import "time"
 //A seperate execution thread, one for each server. 
 //Keep to see if there is any new instances committed and execute the new instances.
 func (kv *KVPaxos) ExecutionThread() {
-    num :=kv.maxExecutedOpNum
-	for (!kv.dead){
-		time.Sleep(10*time.Millisecond)
-		kv.mu.Lock()
-        _,exist:=kv.opLogs[num+1]
-		if (!exist){
-			// time.Sleep(10*time.Millisecond)
-			kv.InsertNop(num+1)
-        }   
-		kv.ExecuteUntil(num+1)
-		num +=1
-		kv.mu.Unlock()
-   }
+    for (!kv.dead){
+    	time.Sleep(100*time.Millisecond)
+    	probe := kv.px.Max()
+    	num := kv.maxExecutedOpNum
+    	if (probe>num){
+			kv.mu.Lock()
+		    _,exist:=kv.opLogs[probe]
+			if (!exist){
+				kv.InsertNop(probe)
+			}
+			kv.ExecuteUntil(probe)
+			kv.mu.Unlock()
+		}
+	}
 }
   
 //Execute all the instances until the current instance with instance number ins_num
