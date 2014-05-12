@@ -84,7 +84,6 @@ var __slice = Array.prototype.slice;
   };
 
   Sketch.prototype.getUpdate=function() {
-    console.log("get updating")
     if (ID==-1){
       this.register()
     }
@@ -99,11 +98,12 @@ var __slice = Array.prototype.slice;
     for (var i=0; i<obj.New_operations.length; i++){
       var op=obj.New_operations[i]
       //if op.OpName=="Put"{
-      //console.log(op)
+      console.log(op)
       sketch.executeDraw(op.ClientStroke.Start_x,op.ClientStroke.Start_y,op.ClientStroke.End_x,op.ClientStroke.End_y,op.ClientStroke.Color,op.ClientStroke.Size)
     //}
     }
    }
+	return sketch.redraw()
   });
   };
 
@@ -126,8 +126,8 @@ var __slice = Array.prototype.slice;
         y: y2,
       });
       sketch.actions.push(action)
-      //console.log("drawing")
-      sketch.redraw()
+      console.log("drawing")
+      
     };
 
 
@@ -180,7 +180,6 @@ var __slice = Array.prototype.slice;
       sketch = this;
       $.each(this.actions, function() {
         if (this.tool) {
-          console.log("redrawing")
           return $.sketch.tools[this.tool].draw.call(sketch, this);
         }
       });

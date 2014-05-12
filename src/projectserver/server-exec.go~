@@ -76,9 +76,11 @@ func (kv *KVPaxos) ExecuteOp(ins_num int) string{
 		    if seen_client {
 		      if op.OperationId > request_state.OperationId { 
 		        //the operation is new, so we should update the client's last RPC information
-		        kv.checkDuplicate[op.ClientId] = CachedRequestState{op.OperationId, color} 
+		        kv.checkDuplicate[op.ClientId] = CachedRequestState{op.OperationId, color}
+		        // WriteToDisk(kv.me,kv.checkDuplicate)  
 		      }		      
 		    }			       
+		  //  op.ClientStroke=Stroke{x,y,0,0,color}
 			kv.opLogs[ins_num]=op	
 			kv.MarkAsExecuted(ins_num)
 	        return color 
@@ -92,7 +94,7 @@ func (kv *KVPaxos) ExecuteOp(ins_num int) string{
 				if OperationId <= request_state.OperationId { 
 					//there is a duplicate, so we should not execute the operation again.
 					duplicated = true
-					
+					//fmt.Println("set duplicated to true ",OperationId, "<=", request_state.OperationId)
 					result = request_state.Result
 			    }
 			}
@@ -104,7 +106,7 @@ func (kv *KVPaxos) ExecuteOp(ins_num int) string{
 				key := x*kv.boardWidth+y	
 				kv.testMapColor[key] = value
 				kv.checkDuplicate[op.ClientId] = CachedRequestState{OperationId, value} 
-	
+				// WriteToDisk(kv.me,kv.checkDuplicate)  
 				result=value
 				kv.MarkAsExecuted(ins_num)
 			}		
@@ -121,12 +123,13 @@ func (kv *KVPaxos) MarkAsExecuted(ins_num int){
    op.Status="EXECUTED"
    kv.opLogs[ins_num]=op
    kv.maxExecutedOpNum = ins_num
-   //write the server's relevant state to disk every Interval operations
    if(ins_num % Interval==0){
       WriteToDisk(kv.me,kv.maxExecutedOpNum)
       WriteToDisk(kv.me,kv.opLogs)
-      WriteToDisk(kv.me,kv.checkDuplicate)  
+   WriteToDisk(kv.me,kv.checkDuplicate)  
    }
+
+  
    kv.logsMu.Unlock()
 }
 

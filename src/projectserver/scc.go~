@@ -13,7 +13,7 @@ color int8
 
 
 // Execute one specific op(i.e. all the operations in the dependency chain), return the result of execution
-
+//Return  that are dependent on the instance with instance number ins_num
 func (kv *KVPaxos) findSCC(ins_num int) string {
 	op :=kv.opLogs[ins_num]
 	//if already executed, could directly return the value in the log.

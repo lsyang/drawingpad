@@ -1,7 +1,7 @@
 package projectserver
 
 import "time"
-
+import  "mencius"
 //import "fmt"
 
 //A seperate execution thread, one for each server. 
@@ -9,18 +9,19 @@ import "time"
 func (kv *KVPaxos) ExecutionThread() {
 	for (!kv.dead){
 		time.Sleep(100*time.Millisecond)
-                num :=kv.maxExecutedOpNum
-                probe := kv.px.Max()
+        num :=kv.maxExecutedOpNum
+        probe := kv.px.Max()
 		if (probe>num){
 			kv.mu.Lock()          
-		        _,exist:=kv.opLogs[probe]
+		     _,exist:=kv.opLogs[probe]
 			if (!exist){
-			   kv.InsertNop(probe)
-		        }   
+			    kv.InsertNop(probe)
+				//px.DriveRevoking(i, Operation{OpName:"nop", OperationId:-1, ClientId :0}) 
+		    }   
 			kv.ExecuteUntil(probe)
 			kv.mu.Unlock()
-             }
        }
+    }
 }
   
 //Execute all the instances until the current instance with instance number ins_num
@@ -44,10 +45,12 @@ func (kv *KVPaxos) ExecuteUntil(ins_num int) string {
 				var v interface{}
 				decided, v = kv.px.Status(i)
 				if decided {
-					op = v.(Operation)
+					op = v.(mencius.Operation)
 					kv.MarkAsCommitted(i,op)
-				} else { //if the operation us neither logged or decided, then we know that there is a hole or the server is far behind. So we add a nop here.
-					 op = kv.InsertNop(i)
+				} else { 
+				    //if the operation us neither logged or decided, then we know that there is a hole or the server is far behind. 
+				    //So we add a nop here.
+					op = kv.InsertNop(i)
 				}
 			}
 			//Important: Execute this operation!
@@ -91,8 +94,7 @@ func (kv *KVPaxos) ExecuteOp(ins_num int) string{
 			if ok {
 				if OperationId <= request_state.OperationId { 
 					//there is a duplicate, so we should not execute the operation again.
-					duplicated = true
-					
+					duplicated = true				
 					result = request_state.Result
 			    }
 			}

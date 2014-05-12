@@ -1,11 +1,12 @@
 package projectserver
 
-import "sort"
-import "time"
+//import "sort"
+//import "time"
+import "mencius"
 //import "fmt"
 
 type SCComponent struct {
-nodes []*Operation
+nodes []mencius.Operation
 color int8
 }
 
@@ -20,11 +21,12 @@ func (kv *KVPaxos) findSCC(ins_num int) string {
     if (op.Status== "EXECUTED"){
 	    return op.ClientStroke.Color
 	}
-	index := 1
+	//index := 1
 	//find SCCs using Tarjan's algorithm
-	kv.stack = kv.stack[0:0]	
-	_ , Result:=kv.strongconnect(&op, &index, ins_num)
-	return Result
+	//kv.stack = kv.stack[0:0]	
+	//_ , result:=kv.strongconnect(&op, &index, ins_num)
+	result :=kv.ExecuteOp(ins_num)
+	return result
 }
 
 
@@ -33,8 +35,8 @@ find the strongly connected components, sort them topologivally
 in inverse topological order, for each strongly connected compponent:
 sort all commands in strongly connected components by their sequence number
 execute every un execured commands in increasing seqeunce number order, marking them MarkAsExecuted
-*/
-func (kv *KVPaxos) strongconnect(v *Operation, index *int,seq int) (bool,string) {
+
+func (kv *KVPaxos) strongconnect(v *mencius.Operation, index *int,seq int) (bool,string) {
     kv.stackMu.Lock()
 
 	//val:=kv.ExecuteOp(seq)
@@ -111,7 +113,7 @@ func (kv *KVPaxos) inStack(w Node) bool {
 	}
 	return false
 }
-
+*/
 type nodeArray []Node
 
 func (na nodeArray) Len() int {

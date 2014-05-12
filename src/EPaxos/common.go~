@@ -7,8 +7,8 @@ const (
   StatusMap="statusMap"
   Max="max"
   Min="min"
-  Store=true
-  Interval=50
+  Store=false
+  Interval=100
 )
 type Lock struct{
    mu sync.Mutex

@@ -3,7 +3,6 @@ import "math"
 import "sort"
 
 func (px *Paxos) DriveProposing(seq int, v interface{}, op_key int) {
-px.mu.Lock()
 	maxProposalNo := 0
 	length := len(px.peers)
 	f:= int(math.Floor(float64(length/2))) //tolerated_failier_count F
@@ -16,23 +15,15 @@ px.mu.Lock()
 		seqNum= px.maxSeqNum(deps)+1 
 		newSlice := make([]int, len(deps)+1, cap(deps)+1)
 		copy(newSlice, deps)
-		newSlice[len(deps)]=seq 
-		px.mapMu.Lock()
+		newSlice[len(deps)]=seq     
 		px.keytoins[op_key]=newSlice
-        px.mapMu.Unlock()    
-	
 	}else{
-		px.mapMu.Lock()
-		px.keytoins[op_key]=[]int{seq}
-    	px.mapMu.Unlock()
+	    px.keytoins[op_key]=[]int{seq}
+
 	}
 	//add the operation to statusMap, i.e. cmds_L[L][i_L]
 	status:= Status{Value:nil, Done:false, Key:op_key, Deps:deps, SeqNum:seqNum}
-	px.mapMu.Lock()
-    px.statusMap[seq] =status	
-    px.mapMu.Unlock()
-px.mu.Unlock()
-	
+	px.statusMap[seq] =status
 	for {
 		px.mu.Lock()
 		decided := px.statusMap[seq].Done
@@ -83,12 +74,15 @@ px.mu.Unlock()
 			if v_a!=nil{ 
 			 v_prime = v_a
 			}
-			fast_path := (prepare_ok_count > f+1+int(math.Floor(float64((f+1)/2)))) && equal
+			//fast_path := (prepare_ok_count >= 1+f+int(math.Floor(float64((f+1)/2)))) && equal
+			fast_path := (prepare_ok_count >= length) && equal
+			fast_path =false
 			accept_ok_count := 0		 
 			if !fast_path{
 				////////////////////////////
 				// slow path / optional accept phase
 				////////////////////////////
+				//fmt.Printf("I am %d, seq instance %d, I am now sending accept request, prepare number %d, value %v\n", px.me, seq, n, v_prime)
 				for _, peer := range px.peers {
 					acceptargs := &AcceptArgs{ SeqNo:seq,  ProposalNo:n,Value:v_prime, Deps: deps, SeqNum: seqNum}
 					acceptreply := &AcceptReply{}
@@ -114,6 +108,8 @@ px.mu.Unlock()
 				px.mu.Lock()
 				MaxDoneSeq := px.peersDoneValue[px.me]
 				px.mu.Unlock()
+				//fmt.Printf("%d is decided, I am %d\n", seq, px.me)
+				//fmt.Printf("I am %d, seq instance %d, my proposed number is %d, the value is %v \n", px.me, seq, n, v_prime)
 				for _, peer := range px.peers {
 					decideargs := &DecideArgs{SeqNo:seq, Value:v_prime, Me:px.me,  MaxDoneSeq:MaxDoneSeq,Deps:deps, SeqNum:seqNum}
 					decidereply := &DecideReply{}
@@ -140,14 +136,10 @@ func (px *Paxos) GetNextNumber(maxsofar int) int {
 func (px *Paxos) maxSeqNum(deps []int) int {
 	max :=0
 	for _,ins_num:=range(deps){
-		status,ok := px.statusMap[ins_num]
-		if ok{
-		seq :=status.SeqNum
-		if seq>max {
+		seq := px.statusMap[ins_num].SeqNum
+		if seq>max{
 			max=seq
 		}
-		}
-		
 	}
 	return max
 }

@@ -1,4 +1,4 @@
-package epaxos
+package mencius
 
 import "testing"
 import "runtime"
@@ -75,21 +75,10 @@ func cleanup(pxa []*Paxos) {
   }
 }
 
-  func deletePaxosStorage(n int){
-  for i := 0; i <n; i++ {
-   os.Remove(Max+strconv.Itoa(i))
-   os.Remove(Min+strconv.Itoa(i))
-   os.Remove(AcceptorStateMap+strconv.Itoa(i))
-   os.Remove(PeersDoneValue+strconv.Itoa(i))
-   os.Remove(StatusMap+strconv.Itoa(i))
-  }
-}
-
 func noTestSpeed(t *testing.T) {
   runtime.GOMAXPROCS(4)
 
   const npaxos = 3
-  deletePaxosStorage(npaxos)
   var pxa []*Paxos = make([]*Paxos, npaxos)
   var pxh []string = make([]string, npaxos)
   defer cleanup(pxa)
@@ -104,7 +93,7 @@ func noTestSpeed(t *testing.T) {
   t0 := time.Now()
 
   for i := 0; i < 20; i++ {
-    pxa[0].Start(i, "x" ,1)
+    pxa[0].Start(i, "x")
     waitn(t, pxa, i, npaxos)
   }
 
@@ -116,8 +105,6 @@ func TestBasic(t *testing.T) {
   runtime.GOMAXPROCS(4)
 
   const npaxos = 3
-   deletePaxosStorage(npaxos)
-   
   var pxa []*Paxos = make([]*Paxos, npaxos)
   var pxh []string = make([]string, npaxos)
   defer cleanup(pxa)
@@ -130,38 +117,41 @@ func TestBasic(t *testing.T) {
   }
 
   fmt.Printf("Test: Single proposer ...\n")
+  //fmt.Printf("I am replica #%v", pxa[0].me)
 
-  pxa[0].Start(0, "hello" ,1)
+  pxa[0].Suggest("hello") //pxa[0].Start(0, "hello")
   waitn(t, pxa, 0, npaxos)
 
   fmt.Printf("  ... Passed\n")
 
   fmt.Printf("Test: Many proposers, same value ...\n")
 
-  for i := 0; i < npaxos; i++ {
-    pxa[i].Start(1, 77 ,1)
-  }
+  //for i := 0; i < npaxos; i++ {
+    pxa[1].Suggest(77) //pxa[i].Start(1, 77)
+  //}
   waitn(t, pxa, 1, npaxos)
 
   fmt.Printf("  ... Passed\n")
 
   fmt.Printf("Test: Many proposers, different values ...\n")
 
-  pxa[0].Start(2, 100 ,1)
-  pxa[1].Start(2, 101 ,1)
-  pxa[2].Start(2, 102 ,1)
+  //pxa[0].Start(2, 100)
+  //pxa[1].Start(2, 101)
+  pxa[2].Start(2, 102)
   waitn(t, pxa, 2, npaxos)
 
   fmt.Printf("  ... Passed\n")
 
   fmt.Printf("Test: Out-of-order instances ...\n")
-
-  pxa[0].Start(7, 700 ,1)
-  pxa[0].Start(6, 600 ,1)
-  pxa[1].Start(5, 500 ,1)
+  
+  pxa[2].Suggest(500)
+   //pxa[0].Start(7, 700)
+  pxa[1].Suggest(400)//pxa[0].Start(6, 600)
+//pxa[1].Start(5, 500)  
+  pxa[0].Suggest(300)
+  pxa[0].Suggest(600)//pxa[0].Start(4, 400)
+  pxa[1].Suggest(700)//pxa[1].Start(3, 300)
   waitn(t, pxa, 7, npaxos)
-  pxa[0].Start(4, 400 ,1)
-  pxa[1].Start(3, 300 ,1)
   waitn(t, pxa, 6, npaxos)
   waitn(t, pxa, 5, npaxos)
   waitn(t, pxa, 4, npaxos)
@@ -178,8 +168,6 @@ func TestDeaf(t *testing.T) {
   runtime.GOMAXPROCS(4)
 
   const npaxos = 5
-   deletePaxosStorage(npaxos)
-   
   var pxa []*Paxos = make([]*Paxos, npaxos)
   var pxh []string = make([]string, npaxos)
   defer cleanup(pxa)
@@ -193,38 +181,39 @@ func TestDeaf(t *testing.T) {
 
   fmt.Printf("Test: Deaf proposer ...\n")
 
-  pxa[0].Start(0, "hello" ,1)
+  pxa[0].Suggest("hello")//pxa[0].Start(0, "hello")
   waitn(t, pxa, 0, npaxos)
 
   os.Remove(pxh[0])
   os.Remove(pxh[npaxos-1])
 
-  pxa[1].Start(1, "goodbye" ,1)
+  pxa[1].Suggest("goodbye")//pxa[1].Start(1, "goodbye")
   waitmajority(t, pxa, 1)
+
   time.Sleep(1 * time.Second)
   if ndecided(t, pxa, 1) != npaxos - 2 {
     t.Fatalf("a deaf peer heard about a decision")
   }
 
-  pxa[0].Start(1, "xxx" ,1)
-  waitn(t, pxa, 1, npaxos-1)
+  pxa[2].Suggest("xxx") //pxa[0].Start(1, "xxx")
+  waitn(t, pxa, 1, npaxos-2)
   time.Sleep(1 * time.Second)
-  if ndecided(t, pxa, 1) != npaxos - 1 {
-    t.Fatalf("a deaf peer heard about a decision")
+  fmt.Printf(" after sleep................... \n")
+  if ndecided(t, pxa, 1) != npaxos - 2 {
+    t.Fatalf("a deaf peer heard about a decision. %v replicas learn the value. \n", ndecided(t, pxa, 1))
   }
-
-  pxa[npaxos-1].Start(1, "yyy" ,1)
-  waitn(t, pxa, 1, npaxos)
+  
+  fmt.Printf(".. \n")
+  pxa[npaxos-1].Suggest("yyy") // pxa[npaxos-1].Start(1, "yyy")
+  waitn(t, pxa, 1, npaxos-2)
 
   fmt.Printf("  ... Passed\n")
 }
-
+ /*
 func TestForget(t *testing.T) {
   runtime.GOMAXPROCS(4)
 
   const npaxos = 6
-   deletePaxosStorage(npaxos)
-   
   var pxa []*Paxos = make([]*Paxos, npaxos)
   var pxh []string = make([]string, npaxos)
   defer cleanup(pxa)
@@ -246,11 +235,11 @@ func TestForget(t *testing.T) {
     }
   }
 
-  pxa[0].Start(0, "00",1)
-  pxa[1].Start(1, "11",1)
-  pxa[2].Start(2, "22",1)
-  pxa[0].Start(6, "66",1)
-  pxa[1].Start(7, "77",1)
+  pxa[0].Start(0, "00")
+  pxa[1].Start(1, "11")
+  pxa[2].Start(2, "22")
+  pxa[0].Start(6, "66")
+  pxa[1].Start(7, "77")
 
   waitn(t, pxa, 0, npaxos)
 
@@ -280,7 +269,7 @@ func TestForget(t *testing.T) {
     pxa[i].Done(1)
   }
   for i := 0; i < npaxos; i++ {
-    pxa[i].Start(8 + i, "xx" ,1)
+    pxa[i].Start(8 + i, "xx")
   }
   allok := false
   for iters := 0; iters < 12; iters++ {
@@ -302,13 +291,11 @@ func TestForget(t *testing.T) {
 
   fmt.Printf("  ... Passed\n")
 }
-
+*/
 func TestManyForget(t *testing.T) {
   runtime.GOMAXPROCS(4)
 
   const npaxos = 3
-   deletePaxosStorage(npaxos)
-   
   var pxa []*Paxos = make([]*Paxos, npaxos)
   var pxh []string = make([]string, npaxos)
   defer cleanup(pxa)
@@ -332,7 +319,7 @@ func TestManyForget(t *testing.T) {
       seq := na[i]
       j := (rand.Int() % npaxos)
       v := rand.Int() 
-      pxa[j].Start(seq, v ,1)
+      pxa[j].Start(seq, v)
       runtime.Gosched()
     }
   }()
@@ -368,9 +355,10 @@ func TestManyForget(t *testing.T) {
 
   fmt.Printf("  ... Passed\n")
 }
+
 /*
-//
 // does paxos forgetting actually free the memory?
+// Should not test this since do not call cleanMemory()
 //
 func TestForgetMem(t *testing.T) {
   runtime.GOMAXPROCS(4)
@@ -378,8 +366,6 @@ func TestForgetMem(t *testing.T) {
   fmt.Printf("Test: Paxos frees forgotten instance memory ...\n")
 
   const npaxos = 3
-   deletePaxosStorage(npaxos)
-   
   var pxa []*Paxos = make([]*Paxos, npaxos)
   var pxh []string = make([]string, npaxos)
   defer cleanup(pxa)
@@ -391,7 +377,7 @@ func TestForgetMem(t *testing.T) {
     pxa[i] = Make(pxh, i, nil)
   }
 
-  pxa[0].Start(0, "x",1)
+  pxa[0].Start(0, "x")
   waitn(t, pxa, 0, npaxos)
 
   runtime.GC()
@@ -404,7 +390,9 @@ func TestForgetMem(t *testing.T) {
     for j := 0; j < len(big); j++ {
       big[j] = byte('a' + rand.Int() % 26)
     }
-    pxa[0].Start(i, string(big),1)
+    for i := 0; i < npaxos; i++ {   //
+         pxa[i].Start(i, string(big)) //pxa[0].Start(i, string(big)) 
+    }   //
     waitn(t, pxa, i, npaxos)
   }
 
@@ -417,7 +405,9 @@ func TestForgetMem(t *testing.T) {
     pxa[i].Done(10)
   }
   for i := 0; i < npaxos; i++ {
-    pxa[i].Start(11 + i, "z",1)
+    pxa[0].Start(11 + i, "z") //
+    pxa[i].Start(11 + i, "z")
+    pxa[2].Start(11 + i, "z")//
   }
   time.Sleep(3 * time.Second)
   for i := 0; i < npaxos; i++ {
@@ -444,8 +434,6 @@ func TestRPCCount(t *testing.T) {
   fmt.Printf("Test: RPC counts aren't too high ...\n")
 
   const npaxos = 3
-   deletePaxosStorage(npaxos)
-   
   var pxa []*Paxos = make([]*Paxos, npaxos)
   var pxh []string = make([]string, npaxos)
   defer cleanup(pxa)
@@ -460,12 +448,14 @@ func TestRPCCount(t *testing.T) {
   ninst1 := 5
   seq := 0
   for i := 0; i < ninst1; i++ {
-    pxa[0].Start(seq, "x",1)
+     pxa[0].Start(seq, "x")
+     pxa[1].Start(seq, "x") //
+     pxa[2].Start(seq, "x") //
     waitn(t, pxa, seq, npaxos)
     seq++
   }
 
-  time.Sleep(2 * time.Second)
+  time.Sleep(1 * time.Second)
 
   total1 := 0
   for j := 0; j < npaxos; j++ {
@@ -476,7 +466,8 @@ func TestRPCCount(t *testing.T) {
   // 3 prepares
   // 3 accepts
   // 3 decides
-  expected1 := ninst1 * npaxos * npaxos
+  expected1 := ninst1 * npaxos * npaxos + 10 * npaxos * npaxos
+  //Expect more Rpc count since they also Ping()
   if total1 > expected1 {
     t.Fatalf("too many RPCs for serial Start()s; %v instances, got %v, expected %v",
       ninst1, total1, expected1)
@@ -485,7 +476,7 @@ func TestRPCCount(t *testing.T) {
   ninst2 := 5
   for i := 0; i < ninst2; i++ {
     for j := 0; j < npaxos; j++ {
-      go pxa[j].Start(seq, j + (i * 10),1)
+      go pxa[j].Start(seq, j + (i * 10))
     }
     waitn(t, pxa, seq, npaxos)
     seq++
@@ -503,7 +494,8 @@ func TestRPCCount(t *testing.T) {
   // Proposer 1: 3 prep, 3 acc, 3 decides.
   // Proposer 2: 3 prep, 3 acc, 3 prep, 3 acc, 3 decides.
   // Proposer 3: 3 prep, 3 acc, 3 prep, 3 acc, 3 prep, 3 acc, 3 decides.
-  expected2 := ninst2 * npaxos * 15
+  expected2 := ninst2 * npaxos * 15 + 20 * npaxos * npaxos
+  //Expect more Rpc count since they also Ping()
   if total2 > expected2 {
     t.Fatalf("too many RPCs for concurrent Start()s; %v instances, got %v, expected %v",
       ninst2, total2, expected2)
@@ -521,8 +513,6 @@ func TestMany(t *testing.T) {
   fmt.Printf("Test: Many instances ...\n")
 
   const npaxos = 3
-   deletePaxosStorage(npaxos)
-   
   var pxa []*Paxos = make([]*Paxos, npaxos)
   var pxh []string = make([]string, npaxos)
   defer cleanup(pxa)
@@ -532,7 +522,7 @@ func TestMany(t *testing.T) {
   }
   for i := 0; i < npaxos; i++ {
     pxa[i] = Make(pxh, i, nil)
-    pxa[i].Start(0, 0,1)
+    pxa[i].Start(0, 0)
   }
 
   const ninst = 50
@@ -543,7 +533,7 @@ func TestMany(t *testing.T) {
       time.Sleep(20 * time.Millisecond)
     }
     for i := 0; i < npaxos; i++ {
-      pxa[i].Start(seq, (seq * 10) + i,1)
+      pxa[i].Start(seq, (seq * 10) + i)
     }
   }
 
@@ -573,7 +563,6 @@ func TestOld(t *testing.T) {
   fmt.Printf("Test: Minority proposal ignored ...\n")
 
   const npaxos = 5
-   deletePaxosStorage(npaxos)
   var pxa []*Paxos = make([]*Paxos, npaxos)
   var pxh []string = make([]string, npaxos)
   defer cleanup(pxa)
@@ -585,18 +574,20 @@ func TestOld(t *testing.T) {
   pxa[1] = Make(pxh, 1, nil)
   pxa[2] = Make(pxh, 2, nil)
   pxa[3] = Make(pxh, 3, nil)
-  pxa[1].Start(1, 111,1)
+
+  pxa[1].Start(1, 111)
 
   waitmajority(t, pxa, 1)
 
   pxa[0] = Make(pxh, 0, nil)
-  pxa[0].Start(1, 222,1)
+  pxa[0].Start(0, 222)
 
-  waitn(t, pxa, 1, 4)
+  waitn(t, pxa, 0, 4)
 
-  if false {
+  if false { //Probably should not be here.
     pxa[4] = Make(pxh, 4, nil)
-    waitn(t, pxa, 1, npaxos)
+    fmt.Printf("Add in a new server. \n ")
+    waitn(t, pxa, 0, npaxos)
   }
 
   fmt.Printf("  ... Passed\n")
@@ -611,8 +602,6 @@ func TestManyUnreliable(t *testing.T) {
   fmt.Printf("Test: Many instances, unreliable RPC ...\n")
 
   const npaxos = 3
-   deletePaxosStorage(npaxos)
-   
   var pxa []*Paxos = make([]*Paxos, npaxos)
   var pxh []string = make([]string, npaxos)
   defer cleanup(pxa)
@@ -623,33 +612,56 @@ func TestManyUnreliable(t *testing.T) {
   for i := 0; i < npaxos; i++ {
     pxa[i] = Make(pxh, i, nil)
     pxa[i].unreliable = true
-    pxa[i].Start(0, 0,1)
+    pxa[i].Start(0, 0)
   }
 
-  const ninst = 50
+  const ninst = 10//50
   for seq := 1; seq < ninst; seq++ {
     // only 3 active instances, to limit the
     // number of file descriptors.
-    for seq >= 3 && ndecided(t, pxa, seq - 3) < npaxos {
-      time.Sleep(20 * time.Millisecond)
-    }
-    for i := 0; i < npaxos; i++ {
-      pxa[i].Start(seq, (seq * 10) + i,1)
-    }
-  }
+   // for i := 0; i < npaxos; i++ {
+     time.Sleep(100 * time.Millisecond)
+      pxa[seq%npaxos].Start(seq, (seq * 10) + seq%npaxos)
 
-  for {
-    done := true
-    for seq := 1; seq < ninst; seq++ {
-      if ndecided(t, pxa, seq) < npaxos {
-        done = false
-      }
-    }
-    if done {
-      break
-    }
-    time.Sleep(100 * time.Millisecond)
+   // }
   }
+ /*
+     for seq >= 3 && ndecided(t, pxa, seq - 3) < npaxos {
+      time.Sleep(20 * time.Millisecond)
+      for i:=0;i<npaxos;i++{
+             if !pxa[i].IsLeader(seq){
+                pxa[i].InsertNoOp(seq)
+              }  
+           }
+    }
+    */
+  fmt.Printf("Send out all suggest. ........................... \n")
+ 
+  time.Sleep(1000 * time.Millisecond)
+  for seq := 0; seq < ninst; seq++ {
+    count:=0
+      fmt.Println("LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL  ", seq)
+      fmt.Printf("seq=%v, num_decided = %v", seq,ndecided(t, pxa, seq) ) 
+      for{
+        if ndecided(t, pxa, seq) < npaxos{ //npaxos {
+            if (count==0){
+            for i:=0;i<npaxos;i++{
+               if !pxa[i].IsLeader(seq){
+                  pxa[i].InsertNoOp(seq, (seq * 10) + seq%npaxos)
+                }  
+             }
+            count++
+            }
+
+             //waitmajority(t, pxa, seq)
+        }else{
+           break
+        }
+        time.Sleep(100 * time.Millisecond)
+      }
+     // waitmajority(t, pxa, seq)
+  }
+  
   
   fmt.Printf("  ... Passed\n")
 }
@@ -700,8 +712,6 @@ func TestPartition(t *testing.T) {
 
   tag := "partition"
   const npaxos = 5
-   deletePaxosStorage(npaxos)
-   
   var pxa []*Paxos = make([]*Paxos, npaxos)
   defer cleanup(pxa)
   defer cleanpp(tag, npaxos)
@@ -724,13 +734,14 @@ func TestPartition(t *testing.T) {
   fmt.Printf("Test: No decision if partitioned ...\n")
 
   part(t, tag, npaxos, []int{0,2}, []int{1,3}, []int{4})
-  pxa[1].Start(seq, 111 ,1)
+  pxa[0].Start(seq, 111) //pxa[1].Start(seq, 111)
   checkmax(t, pxa, seq, 0)
   
   fmt.Printf("  ... Passed\n")
 
   fmt.Printf("Test: Decision in majority partition ...\n")
-
+  seq = 1 //
+  pxa[1].Start(seq, 111) 
   part(t, tag, npaxos, []int{0}, []int{1,2,3}, []int{4})
   time.Sleep(2 * time.Second)
   waitmajority(t, pxa, seq)
@@ -739,8 +750,9 @@ func TestPartition(t *testing.T) {
 
   fmt.Printf("Test: All agree after full heal ...\n")
 
-  pxa[0].Start(seq, 1000 ,1) // poke them
-  pxa[4].Start(seq, 1004 ,1)
+  //How do others learn the old decided value: InsertNoOp
+  pxa[0].InsertNoOp(seq,1000)//pxa[0].Start(seq, 1000) // poke them
+  pxa[4].InsertNoOp(seq,1004)//pxa[4].Start(seq, 1004)
   part(t, tag, npaxos, []int{0,1,2,3,4}, []int{}, []int{})
 
   waitn(t, pxa, seq, npaxos)
@@ -753,8 +765,12 @@ func TestPartition(t *testing.T) {
     seq++
 
     part(t, tag, npaxos, []int{0,1,2}, []int{3,4}, []int{})
-    pxa[0].Start(seq, seq * 10 ,1)
-    pxa[3].Start(seq, (seq * 10) + 1 ,1)
+     // pxa[0].Start(seq, seq * 10)
+    //pxa[3].Start(seq, (seq * 10) + 1)
+
+    for i := 0; i < npaxos; i++ {
+      pxa[i].Start(seq, seq * 10)
+    }
     waitmajority(t, pxa, seq)
     if ndecided(t, pxa, seq) > 3 {
       t.Fatalf("too many decided")
@@ -778,7 +794,7 @@ func TestPartition(t *testing.T) {
 
     part(t, tag, npaxos, []int{0,1,2}, []int{3,4}, []int{})
     for i := 0; i < npaxos; i++ {
-      pxa[i].Start(seq, (seq * 10) + i ,1)
+      pxa[i].Start(seq, (seq * 10) + i)
     }
     waitn(t, pxa, seq, 3)
     if ndecided(t, pxa, seq) > 3 {
@@ -804,7 +820,6 @@ func TestLots(t *testing.T) {
 
   tag := "lots"
   const npaxos = 5
-   deletePaxosStorage(npaxos)
   var pxa []*Paxos = make([]*Paxos, npaxos)
   defer cleanup(pxa)
   defer cleanpp(tag, npaxos)
@@ -864,8 +879,17 @@ func TestLots(t *testing.T) {
       }
       if seq - nd < 10 {
         for i := 0; i < npaxos; i++ {
-          pxa[i].Start(seq, rand.Int() % 10 ,1)
+          if pxa[i].IsLeader(seq){
+            pxa[i].Start(seq, rand.Int() % 10)
+          }
         }
+        time.Sleep(1*time.Second)
+        for i := 0; i < npaxos; i++ {
+          if !pxa[i].IsLeader(seq){
+            pxa[i].InsertNoOp(seq, rand.Int() % 10)
+          }
+        }
+
         seq++
       }
       time.Sleep(time.Duration(rand.Int63() % 300) * time.Millisecond)

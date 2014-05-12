@@ -110,7 +110,7 @@ func (px *Paxos) UpdateMax(seq int) {
 }
 
 
-//Take the maximum of seq1 and seq2
+//Take the max of seq1 and seq2
 //Take the union of two lists deps1 and deps2 and sort the list
 //Check if two maxs and two lists are strictly equal
 func (px *Paxos) mergeAttributes(seq1 int, deps1 []int, seq2 int, deps2 []int) (int, []int, bool) {

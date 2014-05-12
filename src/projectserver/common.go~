@@ -5,7 +5,7 @@ const (
   CachedRequest="cachedRequestState"
   OperationLogs="opLogs"
   Store = true
-  Interval=50
+  Interval=100
 )
 
 type Lock struct{
@@ -29,7 +29,7 @@ type PutArgs struct{
     ClientID int64
     RequestID int64
 }
-type PutReply struct{
+type PutReply struct{ //same as GetUpdateReply
     Has_operation bool
     New_operations []Operation
 	Err string

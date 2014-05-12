@@ -7,7 +7,9 @@ import "os"
 import "time"
 import "fmt"
 import "math/rand"
+import "mencius"
 
+//Check a single stroke
 func check(t *testing.T, ck *Clerk, start int,end int, value string) {
   v := ck.Get(start,end)
   
@@ -17,6 +19,64 @@ func check(t *testing.T, ck *Clerk, start int,end int, value string) {
   }
 }
 
+//Check the history of clients to see if it equals the given list of strokes
+//Skip noop operations
+func checkHistory(t *testing.T, ck *Clerk, correct_strokes []mencius.Stroke) {
+   v := ck.GetUpdateFrom(-1)
+   if v.Has_operation{
+      missed_ops:= v.New_operations
+      j := 0
+      for i := 0; i < len(missed_ops); i++{
+           if (j <len(correct_strokes)){
+	          client_stroke :=missed_ops[i].ClientStroke 
+              correct_stroke :=correct_strokes[j]
+              if !isNoOp(client_stroke){	
+                  j=j+1    
+                  if !strokeEqual(client_stroke, correct_stroke) { 
+			          t.Fatalf("Getupdate()'s stroke #%v, expected %v, got %v", j, correct_stroke, client_stroke)
+		           }               
+	          }
+          }
+      }
+     // if j!=len(correct_strokes){
+       //  t.Fatalf("Getupdate()'s return %v noop stroke, should be %v strokes", j, len(correct_strokes))
+    //  }
+   }
+}
+
+//Check whether the history of two clients is a prefix of one another
+func checkClientHisEqual(t *testing.T, ck1 *Clerk, ck2 *Clerk){
+   update1 := ck1.GetUpdateFrom(-1)
+   update2 := ck2.GetUpdateFrom(-1)
+   if update1.Has_operation && update2.Has_operation{
+       v1 := update1.New_operations
+       v2 := update2.New_operations
+       //First,check if the length of two lists are equal
+       v :=v1
+       if len(v1)>=len(v2){
+           v=v2
+       }
+       for i := 0; i < len(v); i++{
+           s1 :=v1[i].ClientStroke 
+           s2 :=v2[i].ClientStroke 
+           if !strokeEqual(s1, s2) { 
+			    t.Fatalf("Two clients have different history, for %v instance, one had %v, one had %v", i, s1, s2)
+		   }       
+       }    
+   }
+}
+
+
+//test if two strokes are equal
+func strokeEqual(s1 mencius.Stroke, s2 mencius.Stroke) bool {
+  result := (s1.Start_x==s2.Start_x && s1.Start_y==s2.Start_y && s1.End_x==s2.End_x && s1.End_y==s2.End_y && s1.Color==s2.Color && s1.Size==s2.Size)
+  return result
+}
+
+func isNoOp(s1 mencius.Stroke) bool {
+  result := (s1.Start_x==0 && s1.Start_y==0 && s1.End_x==0 && s1.End_y==0 && s1.Color=="" && s1.Size==0)
+  return result
+}
 func port(tag string, host int) string {
   s := "/var/tmp/824-"
   s += strconv.Itoa(os.Getuid()) + "/"
@@ -32,24 +92,47 @@ func cleanup(kva []*KVPaxos) {
   for i := 0; i < len(kva); i++ {
     if kva[i] != nil {
       kva[i].kill()
+      
     }
   }
 }
-/*
-func NextValue(hprev string, val string) string {
-  h := hash(hprev + val)
-  return strconv.Itoa(int(h))
+func deleteStorage(n int) {
+  for i := 0; i <n; i++ {
+      error:= os.Remove("opLogs"+strconv.Itoa(i))
+      if error!=nil{
+         fmt.Println("error remove oplogs")
+      }
+      error2:=os.Remove(MaxExecuted+strconv.Itoa(i))
+      if error2!=nil{
+         fmt.Println("error remove maxexecuted")
+      }      
+       error3:=os.Remove(CachedRequest+strconv.Itoa(i))
+      if error3!=nil{
+      	fmt.Println("error remove cachedrequest")
+      }
+  }
 }
-*/
+
+func deletePaxosStorage(n int){
+  for i := 0; i <n; i++ {
+   os.Remove(mencius.Max+strconv.Itoa(i))
+   os.Remove(mencius.Min+strconv.Itoa(i))
+   os.Remove(mencius.AcceptorStateMap+strconv.Itoa(i))
+   os.Remove(mencius.PeersDoneValue+strconv.Itoa(i))
+   os.Remove(mencius.StatusMap+strconv.Itoa(i))
+  }
+}
 
 func TestBasic(t *testing.T) {
   runtime.GOMAXPROCS(4)
 
   const nservers = 3
+  deleteStorage(nservers)
+  deletePaxosStorage(nservers)
   var kva []*KVPaxos = make([]*KVPaxos, nservers)
   var kvh []string = make([]string, nservers)
   defer cleanup(kva)
-
+ // defer deleteStorage(nservers)
   for i := 0; i < nservers; i++ {
     kvh[i] = port("basic", i)
   }
@@ -64,32 +147,51 @@ func TestBasic(t *testing.T) {
   }
 
   fmt.Printf("Test: Basic put/puthash/get ...\n")
-/*
-  pv := ck.Put(1, 1,"x")
-
+   
+  s1 := mencius.Stroke{1,1,3,5, "aa",1}
+  s2 := mencius.Stroke{1,1,3,5, "aaa",13}
+  s3 := mencius.Stroke{1,1,3,5, "b",1}
+  l1 := make([]mencius.Stroke,1)
+  l2 := make([]mencius.Stroke,2)
+  l3 := make([]mencius.Stroke,3)
+  l4 := make([]mencius.Stroke,4)
+  ck.Put(s1)
+  time.Sleep(1000*time.Millisecond)
+  l1[0]=s1
+  l2[0]=s1
+  l3[0]=s1
+  l4[0]=s1
+  checkHistory(t, ck, l1)
   
-  ov := ""
-  if ov != pv {
-    t.Fatalf("wrong value; expected %s got %s", ov, pv)
-  }
-*/
-  ck.Put(1,1, "aa")
-  check(t, ck, 1,1, "aa")
-  fmt.Printf("ck.Put(1,1,aa) correct... \n")
+  cka[1].Put(s2)
+  time.Sleep(1000*time.Millisecond)
+  l2[1]=s2
+  l3[1]=s2
+  l4[1]=s2
+  checkHistory(t, ck, l2)
+  checkHistory(t, cka[1], l2)
+  checkHistory(t, cka[2], l2)
   
-  
-  ck.Put(1,1, "aaa")
-  check(t, ck, 1,1, "aaa") 
-  check(t, cka[1], 1,1, "aaa")
-  check(t, cka[2], 1,1, "aaa")
- fmt.Printf("ck.Put(1,aaa) correct... \n")
- 
-  cka[1].Put(1,1, "b")
-  check(t, cka[1], 1,1, "b") 
- // check(t, ck, 1, 1,"b") 
- // check(t, cka[2], 1,1, "b")
+  cka[2].Put(s3)
+  l3[2]=s3
+  l4[2]=s3
+  time.Sleep(1000*time.Millisecond)
+    /*
+  checkHistory(t, ck, l3) 
+  checkHistory(t, cka[1],l3) 
+  checkHistory(t, cka[2],l3)
 
   fmt.Printf("  ... Passed\n")
+  
+  fmt.Printf("Test: A new client join ...\n")
+
+  new_client := MakeClerk(kvh)
+  time.Sleep(100 * time.Millisecond)
+  checkHistory(t, new_client, l3) 
+
+  fmt.Printf("  ... Passed\n")
+
+
   fmt.Printf("Test: Concurrent clients ...\n")
 
   for iters := 0; iters < 20; iters++ {
@@ -102,7 +204,7 @@ func TestBasic(t *testing.T) {
         ci := (rand.Int() % nservers)
         myck := MakeClerk([]string{kvh[ci]})
         if (rand.Int() % 1000) < 500 {
-          myck.Put(2,2,strconv.Itoa(rand.Int()))
+          myck.Put(mencius.Stroke{2,2,3,5, strconv.Itoa(rand.Int()),1})
         } else {
           myck.Get(2,2)
         }
@@ -121,25 +223,33 @@ func TestBasic(t *testing.T) {
   }
 
   fmt.Printf("  ... Passed\n")
+ 
   time.Sleep(1 * time.Second)
+  //deleteStorage(nservers)
+  */
 }
 
 
 
-func TestBasicDifferentIndex(t *testing.T) {
+func TestDifferentBasic(t *testing.T) {
+  time.Sleep(2 * time.Second)
   runtime.GOMAXPROCS(4)
 
   const nservers = 3
+  deleteStorage(nservers)
+   deletePaxosStorage(nservers)
   var kva []*KVPaxos = make([]*KVPaxos, nservers)
   var kvh []string = make([]string, nservers)
-  defer cleanup(kva)
 
+  defer cleanup(kva)
+  //defer deleteStorage(nservers)
   for i := 0; i < nservers; i++ {
     kvh[i] = port("basic", i)
   }
   for i := 0; i < nservers; i++ {
     kva[i] = StartServer(kvh, i)
   }
+    
 
   ck := MakeClerk(kvh)
   var cka [nservers]*Clerk
@@ -149,104 +259,32 @@ func TestBasicDifferentIndex(t *testing.T) {
 
   fmt.Printf("Test: Basic put/get for different indices ...\n")
 
-  ck.Put(1,2, "aa")
-  check(t, ck, 1,2, "aa")
-  fmt.Printf("ck.Put(1,2,aa) correct... \n")
-  
-  
-  ck.Put(2, 2,"aaa")
-  check(t, ck, 2,2, "aaa")
-    check(t, cka[1], 2,2, "aaa")
-  check(t, cka[2],2,2, "aaa")
-   
-	ck.Put(3,3, "b")
+	ck.Put(mencius.Stroke{1,2, 10,10,"aa",1})
+	check(t, ck, 1,2, "aa")
+	fmt.Printf("ck.Put(1,2,aa) correct... \n")
+
+
+	ck.Put(mencius.Stroke{2, 2, 10,10,"aaa",1})
+	check(t, ck, 2,2, "aaa")
+	check(t, cka[1], 2,2, "aaa")
+	check(t, cka[2],2,2, "aaa")
+
+	ck.Put(mencius.Stroke{3,3,10,10, "b",1})
 	check(t, ck, 3,3, "b") 
 	check(t, cka[2], 3,3, "b")
 	check(t, cka[1], 3,3, "b") 
-  fmt.Printf("  ... Passed\n")
+	fmt.Printf("ck.Put(3,3,10,10,b,1) correct... \n")
+
+    time.Sleep(1 * time.Second)
+	  checkClientHisEqual(t, cka[1], cka[2])  
+    checkClientHisEqual(t, ck, cka[1])
+    checkClientHisEqual(t, ck, cka[2]) 
+
+
+	fmt.Printf("  ... Passed\n")
 
   time.Sleep(1 * time.Second)
 }
-
-
-
-/*
-
-func TestDone(t *testing.T) {
-  runtime.GOMAXPROCS(4)
-
-  const nservers = 3
-  var kva []*KVPaxos = make([]*KVPaxos, nservers)
-  var kvh []string = make([]string, nservers)
-  defer cleanup(kva)
-
-  for i := 0; i < nservers; i++ {
-    kvh[i] = port("done", i)
-  }
-  for i := 0; i < nservers; i++ {
-    kva[i] = StartServer(kvh, i)
-  }
-  ck := MakeClerk(kvh)
-  var cka [nservers]*Clerk
-  for pi := 0; pi < nservers; pi++ {
-    cka[pi] = MakeClerk([]string{kvh[pi]})
-  }
-
-  fmt.Printf("Test: server frees Paxos log memory...\n")
-
-  ck.Put("a", "aa")
-  check(t, ck, "a", "aa")
-
-  runtime.GC()
-  var m0 runtime.MemStats
-  runtime.ReadMemStats(&m0)
-  // rtm's m0.Alloc is 2 MB
-
-  sz := 1000000
-  items := 10
-
-  for iters := 0; iters < 2; iters++ {
-    for i := 0; i < items; i++ {
-      key := strconv.Itoa(i)
-      value := make([]byte, sz)
-      for j := 0; j < len(value); j++ {
-        value[j] = byte((rand.Int() % 100) + 1)
-      }
-      ck.Put(key, string(value))
-      check(t, cka[i % nservers], key, string(value))
-    }
-  } 
-  
-  // Put and Get to each of the replicas, in case
-  // the Done information is piggybacked on
-  // the Paxos proposer messages.
-  for iters := 0; iters < 2; iters++ {
-    for pi := 0; pi < nservers; pi++ {
-      cka[pi].Put("a", "aa")
-      check(t, cka[pi], "a", "aa")
-    }
-  }
-
-  time.Sleep(1 * time.Second)
-
-  runtime.GC()
-  var m1 runtime.MemStats
-  runtime.ReadMemStats(&m1)
-  // rtm's m1.Alloc is 45 MB
-
-   fmt.Printf("  Memory: before %v, after %v\n", m0.Alloc, m1.Alloc)
-
-  allowed := m0.Alloc + uint64(nservers * items * sz * 2)
-  if m1.Alloc > allowed {
-    t.Fatalf("Memory use did not shrink enough (Used: %v, allowed: %v).\n", m1.Alloc, allowed)
-  }
-
-  fmt.Printf("  ... Passed\n")
-}
-
-*/
-
-
 
 
 func pp(tag string, src int, dst int) string {
@@ -289,14 +327,19 @@ func part(t *testing.T, tag string, npaxos int, p1 []int, p2 []int, p3 []int) {
 
 
 func TestPartition(t *testing.T) {
+time.Sleep(2 * time.Second)
   runtime.GOMAXPROCS(4)
 
   tag := "partition"
   const nservers = 5
+  deleteStorage(nservers)
+   deletePaxosStorage(nservers)
   var kva []*KVPaxos = make([]*KVPaxos, nservers)
+
   defer cleanup(kva)
   defer cleanpp(tag, nservers)
-
+   // defer deleteStorage(nservers)
+    
   for i := 0; i < nservers; i++ {
     var kvh []string = make([]string, nservers)
     for j := 0; j < nservers; j++ {
@@ -318,16 +361,21 @@ func TestPartition(t *testing.T) {
   fmt.Printf("Test: No partition ...\n")
 
   part(t, tag, nservers, []int{0,1,2,3,4}, []int{}, []int{})
-  cka[0].Put(1,2, "12")
-  cka[2].Put(1, 2,"13")
+  cka[0].Put(mencius.Stroke{1,2, 10,10,"12",1})
+  cka[2].Put(mencius.Stroke{1, 2, 10,10,"13",1})
   check(t, cka[3], 1, 2,"13")
+  
+  time.Sleep(2*time.Second)
+  checkClientHisEqual(t, cka[1], cka[2])  
+  checkClientHisEqual(t, cka[0], cka[1])
+  checkClientHisEqual(t, cka[0], cka[2]) 
 
   fmt.Printf("  ... Passed\n")
 
   fmt.Printf("Test: Progress in majority ...\n")
 
   part(t, tag, nservers, []int{2,3,4}, []int{0,1}, []int{})
-  cka[2].Put(1,2, "14")
+  cka[2].Put(mencius.Stroke{1,2, 10,10,"14",1})
   check(t, cka[4], 1, 2,"14")
 
   fmt.Printf("  ... Passed\n")
@@ -337,7 +385,7 @@ func TestPartition(t *testing.T) {
   done0 := false
   done1 := false
   go func() {
-    cka[0].Put(1, 2,"15")
+    cka[0].Put(mencius.Stroke{1, 2, 10,10,"15",1})
     done0 = true
   }()
   go func() {
@@ -352,7 +400,7 @@ func TestPartition(t *testing.T) {
     t.Fatalf("Get in minority completed")
   }
   check(t, cka[4], 1, 2,"14")
-  cka[3].Put(1, 2,"16")
+  cka[3].Put(mencius.Stroke{1, 2, 10, 10, "16", 1} )
   check(t, cka[4], 1,2, "16")
 
   fmt.Printf("  ... Passed\n")
@@ -394,15 +442,18 @@ func TestPartition(t *testing.T) {
   fmt.Printf("  ... Passed\n")
 }
 
-
+/*
 func TestUnreliable(t *testing.T) {
+time.Sleep(2 * time.Second)
   runtime.GOMAXPROCS(4)
 
   const nservers = 3
+  deleteStorage(nservers)
+   deletePaxosStorage(nservers)
   var kva []*KVPaxos = make([]*KVPaxos, nservers)
   var kvh []string = make([]string, nservers)
   defer cleanup(kva)
-
+// defer deleteStorage(nservers)
   for i := 0; i < nservers; i++ {
     kvh[i] = port("un", i)
   }
@@ -421,10 +472,10 @@ func TestUnreliable(t *testing.T) {
 
   fmt.Printf("Test: Basic put/get, unreliable ...\n")
 
-  ck.Put(2, 2,"aa")
+  ck.Put(mencius.Stroke{2, 2, 10, 10, "aa",1})
   check(t, ck, 2,2, "aa")
 
-  cka[1].Put(2,2, "aaa")
+  cka[1].Put(mencius.Stroke{2,2, 10, 10,"aaa",1})
 
   check(t, cka[2], 2,2, "aaa")
   check(t, cka[1], 2,2, "aaa")
@@ -451,17 +502,17 @@ func TestUnreliable(t *testing.T) {
         myck := MakeClerk(sa)
         key := me
 
-        myck.Put(key,key, "0")
+        myck.Put(mencius.Stroke{key,key,10,10, "0",1})
         pv := myck.Get(key,key)
         if pv!="0" {
           t.Fatalf("wrong value; expected %s but got %s", pv, "0")
         }
-        myck.Put(key, key,"1")
+        myck.Put(mencius.Stroke{key, key,10,10, "1",1})
         pv = myck.Get(key,key)
         if pv != "1" {
           t.Fatalf("wrong value; expected %s but got %s", pv, "1")
         }
-        myck.Put(key,key, "2")
+        myck.Put(mencius.Stroke{key,key,10,10,  "2",1})
      
 
         time.Sleep(100 * time.Millisecond)
@@ -499,7 +550,7 @@ func TestUnreliable(t *testing.T) {
         }
         myck := MakeClerk(sa)
         if (rand.Int() % 1000) < 500 {
-          myck.Put(3, 3,strconv.Itoa(rand.Int()))
+          myck.Put(mencius.Stroke{3, 3, 10,10, strconv.Itoa(rand.Int()),1})
         } else {
           myck.Get(3,3)
         }
@@ -522,18 +573,22 @@ func TestUnreliable(t *testing.T) {
 
 
 }
+*/
 
 func TestHole(t *testing.T) {
+time.Sleep(2 * time.Second)
   runtime.GOMAXPROCS(4)
 
   fmt.Printf("Test: Tolerates holes in paxos sequence ...\n")
 
   tag := "hole"
   const nservers = 5
+  deleteStorage(nservers)
+   deletePaxosStorage(nservers)
   var kva []*KVPaxos = make([]*KVPaxos, nservers)
   defer cleanup(kva)
   defer cleanpp(tag, nservers)
-
+ // defer deleteStorage(nservers)
   for i := 0; i < nservers; i++ {
     var kvh []string = make([]string, nservers)
     for j := 0; j < nservers; j++ {
@@ -551,7 +606,7 @@ func TestHole(t *testing.T) {
     part(t, tag, nservers, []int{0,1,2,3,4}, []int{}, []int{})
 
     ck2 := MakeClerk([]string{port(tag, 2)})
-    ck2.Put(15, 2,"q")
+    ck2.Put(mencius.Stroke{ 15, 2, 10, 10, "q",1})
 
     done := false
     const nclients = 10
@@ -567,12 +622,12 @@ func TestHole(t *testing.T) {
         }
         key := cli
         last := ""
-        cka[0].Put(key,key, last)
+        cka[0].Put(mencius.Stroke{key,key, 10,10,last,1})
         for done == false {
           ci := (rand.Int() % 2)
           if (rand.Int() % 1000) < 500 {
             nv := strconv.Itoa(rand.Int())
-            cka[ci].Put(key,key, nv)
+            cka[ci].Put(mencius.Stroke{key,key,10,10, nv,1})
             last = nv
           } else {
             v := cka[ci].Get(key,key)
@@ -594,7 +649,7 @@ func TestHole(t *testing.T) {
     // minority servers were interrupted in the middle of
     // paxos agreements?
     check(t, ck2, 15, 2,"q")
-    ck2.Put(15,2, "qq")
+    ck2.Put(mencius.Stroke{15,2, 10,10, "qq", 1})
     check(t, ck2, 15,2, "qq")
       
     // restore network, wait for all threads to exit.
@@ -616,16 +671,19 @@ func TestHole(t *testing.T) {
 
 
 func TestManyPartition(t *testing.T) {
+time.Sleep(2 * time.Second)
   runtime.GOMAXPROCS(4)
 
   fmt.Printf("Test: Many clients, changing partitions ...\n")
 
   tag := "many"
   const nservers = 5
+  deleteStorage(nservers)
+   deletePaxosStorage(nservers)
   var kva []*KVPaxos = make([]*KVPaxos, nservers)
   defer cleanup(kva)
   defer cleanpp(tag, nservers)
-
+  
   for i := 0; i < nservers; i++ {
     var kvh []string = make([]string, nservers)
     for j := 0; j < nservers; j++ {
@@ -684,12 +742,12 @@ func TestManyPartition(t *testing.T) {
       myck := MakeClerk(sa)
       key := cli
       last := ""
-      myck.Put(key, key,last)
+      myck.Put(mencius.Stroke{key, key, 10,10,last,1})
      
       for done == false {
         if (rand.Int() % 1000) < 500 {
           nv := strconv.Itoa(rand.Int())
-          myck.Put(key, key,nv)
+          myck.Put(mencius.Stroke{key, key, 10,10,nv,1})
           v:=myck.Get(key,key)
           if v != nv {
             t.Fatalf("%v: puthash wrong value, key %v, wanted %v, got %v",
@@ -732,3 +790,5 @@ func TestManyPartition(t *testing.T) {
     fmt.Printf("  ... Passed\n")
   }
 }
+
+

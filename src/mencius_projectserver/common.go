@@ -1,5 +1,7 @@
 package projectserver
 import "sync"
+import "mencius"
+
 const (
   MaxExecuted="maxExecutedOpNum"
   CachedRequest="cachedRequestState"
@@ -20,24 +22,24 @@ type GetUpdateArgs struct{
 
 type GetUpdateReply struct{
     Has_operation bool 
-    New_operations []Operation
+    New_operations []mencius.Operation
 }
 
 type PutArgs struct{
     Client_newest_op_num int
-    ClientStroke Stroke
+    ClientStroke mencius.Stroke
     ClientID int64
     RequestID int64
 }
 type PutReply struct{
     Has_operation bool
-    New_operations []Operation
+    New_operations []mencius.Operation
 	Err string
 }
 
 type GetArgs struct{
     Start_x int
-	Start_y int
+	  Start_y int
     ClientID int64
     RequestID int64
 }
@@ -47,27 +49,8 @@ type GetReply struct{
 }
 
 
-type Operation struct{
-  OpName string
-  ClientStroke Stroke
-  OperationId int64
-  ClientId int64
-  SeqNum int
-  Dep []int
-  Status string
-  Index, Lowlink int
-}
-
-type Stroke struct{
-  Start_x int
-  Start_y int
-  End_x int
-  End_y int
-  Color string
-  Size int
-}
 
 type Node struct {
-op *Operation
+op *mencius.Operation
 seq int
 }

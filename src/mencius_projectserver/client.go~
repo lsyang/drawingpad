@@ -6,35 +6,23 @@ import "time"
 import "crypto/rand"
 import "math/big"
 import "sync"
-// import "log"
-// import "net/http"
-// import "encoding/json"
-// import "strconv"
 
 
 type Clerk struct {
   mu sync.Mutex // one RPC at a time
   servers []string
-  // You will have to modify this struct.
   me int64
   requestID int64
   max_operation_num int
   keys []int
-  // putChan chan Stroke 
-  // getChan chan GetUpdateReply
 }
 
 
 func MakeClerk(servers []string) *Clerk {
   ck := new(Clerk)
   ck.servers = servers
-  // You'll have to add code here.
   ck.requestID=1
   ck.me=nrand()
-  // ck.putChan=make(chan Stroke, 10) //at most 10 ops
-  // ck.getChan=make(chan GetUpdateReply, 0)
-  // go ck.Put()
-  // go ck.GetUpdate()
   return ck
 }
 
@@ -44,6 +32,7 @@ func nrand() int64 {
   x := bigx.Int64()
   return x
 }
+
 //
 // call() sends an RPC to the rpcname handler on server srv
 // with arguments args, waits for the reply, and leaves the
@@ -76,6 +65,31 @@ func call(srv string, rpcname string,
   fmt.Println(err)
   return false
 }
+
+
+//
+// fetch the current value for a key.
+// returns "" if the key does not exist.
+// keeps trying forever in the face of all other errors.
+//
+func (ck *Clerk) Get(start_x int,start_y int) string {
+  requestID := ck.requestID
+  //increment the requestID to be the next one
+  ck.requestID += 1
+  args := &GetArgs{start_x,start_y, ck.me, requestID}
+  for {
+    //try sending request for all the servers
+    for _, server := range ck.servers {
+      reply := &GetReply{}
+      ok := call(server, "KVPaxos.Get", args, reply)
+      if ok == true && reply.Err == "" {
+        return reply.Value 
+      }
+    }
+    time.Sleep(time.Second)
+  }
+}
+
 
 //
 // Get update from the server
@@ -110,35 +124,70 @@ func (ck *Clerk) GetUpdate() GetUpdateReply{
   //return reply
 }
 
-func (ck *Clerk) Get(start_x int,start_y int) string {
-  operationId := ck.requestID
-  //increment the operationId to be the next one
+//Get all the updates after num, does not include num
+func (ck *Clerk) GetUpdateFrom(num int) GetUpdateReply{
+  ck.mu.Lock()
+  defer ck.mu.Unlock()
+
+  for{
+    var reply GetUpdateReply
+    args := &GetUpdateArgs{num,ck.me,ck.requestID}
+    for _, srv := range ck.servers {
+      ok := call(srv, "KVPaxos.GetUpdate", args, &reply)
+      if ok {
+        //ck.getChan <- reply
+        // fmt.Println("%v, got an reply", ck.me)
+        ck.requestID++
+        operations:=reply.New_operations
+        if reply.Has_operation{
+          //fmt.Println("%v, has operation" , ck.me)
+         ck.max_operation_num=operations[len(operations)-1].SeqNum
+        }
+        //break
+        return reply
+        //time.Sleep(80 * time.Millisecond) //goes faster and throws away empty ops
+      }
+    }
+    time.Sleep(80 * time.Millisecond)
+    //fmt.Println("here")
+  }
+  //return reply
+}
+
+// Put operation by client
+// set the value for a key.
+// keeps trying until it succeeds.
+//
+/*
+func (ck *Clerk) Put(op Stroke) string {
+  ck.mu.Lock()
+  defer ck.mu.Unlock()
+ //increment the requestID to be the next one
+  requestID := ck.requestID
+ 
   ck.requestID += 1
-  args := &GetArgs{start_x,start_y, ck.me, operationId}
+  args := &PutArgs{ck.max_operation_num, op, ck.me, requestID}
   for {
     //try sending request for all the servers
-    for _, server := range ck.servers {
-      reply := &GetReply{}
-      ok := call(server, "KVPaxos.Get", args, reply)
+    for _, srv := range ck.servers {
+      var reply PutReply
+      ok := call(srv, "KVPaxos.Put", args, &reply)
       if ok == true && reply.Err == "" {
-        return reply.Value 
+        return ""
       }
     }
     time.Sleep(time.Second)
   }
 }
+*/
 
-//
-// Put operation by client
-//
+
 func (ck *Clerk) Put(op Stroke) {
   ck.mu.Lock()
   defer ck.mu.Unlock()
   
   for{
     var reply PutReply
-   // op:= <-ck.putChan //if no op, will stuck right? 
-    //fmt.Println("%v, there is an op", ck.me)
     args := &PutArgs{ck.max_operation_num,op,ck.me,ck.requestID}
     for _, srv := range ck.servers {
       
@@ -146,12 +195,14 @@ func (ck *Clerk) Put(op Stroke) {
       if ok {
         ck.requestID++
         return 
-        //break
       }
     }
     time.Sleep(100 * time.Millisecond)
   }
 }
+
+
+
 
 // func (ck *Clerk) PutChan(op Stroke){
 //   //fmt.Println("here!")
@@ -163,5 +214,6 @@ func (ck *Clerk) Put(op Stroke) {
 //   //fmt.Println("callinhg on get")
 //   return reply
 // }
+
 
 

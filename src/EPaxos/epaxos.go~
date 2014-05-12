@@ -39,7 +39,6 @@ type Status struct {
 
 type Paxos struct {
   mu sync.Mutex
-  mapMu sync.Mutex
   l net.Listener
   dead bool
   unreliable bool
@@ -216,9 +215,6 @@ func (px *Paxos) Status(seq int) (bool, interface{}) {
 //
 func Make(peers []string, me int, rpcs *rpc.Server) *Paxos {
   px := &Paxos{}
-  px.mu.Lock()
-
-  
   px.peers = peers
   px.me = me
 
@@ -228,27 +224,27 @@ func Make(peers []string, me int, rpcs *rpc.Server) *Paxos {
   
  //persistent storage
  if (Store){
-   px.acceptorStateMap,_=ReadAcceptorStateMap(px.me)
-   px.statusMap,_ = ReadStatusMap(px.me)
-   px.max,_ = ReadMax(px.me)
-   px.min,_=ReadMin(px.me)
+ px.acceptorStateMap,_=ReadAcceptorStateMap(px.me)
+px.statusMap,_ = ReadStatusMap(px.me)
+ px.max,_ = ReadMax(px.me)
+ px.min,_=ReadMin(px.me)
    px.peersDoneValue,_=ReadPeersDoneValue(px.me,length)
  }else{
  
-   px.acceptorStateMap = make(map[int]AcceptorState)
-   px.statusMap = make(map[int]Status)   
-   px.max = -1
-   px.min = 0
+    px.acceptorStateMap = make(map[int]AcceptorState)
+  px.statusMap = make(map[int]Status)   
+  px.max = -1
+ px.min = 0
  
-   px.peersDoneValue = make([]int, length)
-   for i := 0; i < length; i++ {
-     px.peersDoneValue[i] = -1
-   }
+  px.peersDoneValue = make([]int, length)
+  for i := 0; i < length; i++ {
+    px.peersDoneValue[i] = -1
+  }
   
  
  }
 
-px.mu.Unlock()
+
   if rpcs != nil {
     // caller will create socket &c
     rpcs.Register(px)

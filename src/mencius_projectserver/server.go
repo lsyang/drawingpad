@@ -4,7 +4,6 @@ import "net"
 import "fmt"
 import "net/rpc"
 import "log"
-import "epaxos"
 import "sync"
 import "os"
 import "syscall"
@@ -12,6 +11,8 @@ import "encoding/gob"
 import "math/rand"
 import "time"
 
+import "mencius"
+import "epaxos"
 const Debug=0
 func DPrintf(format string, a ...interface{}) (n int, err error) {
   if Debug > 0 {log.Printf(format, a...) }
@@ -38,7 +39,7 @@ type KVPaxos struct {
 
   stack []Node
   
-  opLogs map[int]Operation
+  opLogs map[int]mencius.Operation
   boardWidth int
   testMapColor map[int]string //map a position (x*boardWidth+y) to color
   maxExecutedOpNum int//the largest Operation that has been executed
@@ -58,10 +59,10 @@ func (kv *KVPaxos) GetUpdate(args *GetUpdateArgs, reply *GetUpdateReply) error {
 		return nil
 	}
 	len := kv.maxExecutedOpNum-ck_newest_op_num
-	missed_ops := make([]Operation,len)
+	missed_ops := make([]mencius.Operation,len)
 	for i := 0; i < len; i++ {
-		index := kv.maxExecutedOpNum-(len-1-i)
-		missed_ops[i] = kv.opLogs[index]
+	  	index := kv.maxExecutedOpNum-(len-1-i)
+		  missed_ops[i] = kv.opLogs[index]
 	}
 	reply.Has_operation=true
 	reply.New_operations=missed_ops
@@ -73,7 +74,7 @@ func (kv *KVPaxos) GetUpdate(args *GetUpdateArgs, reply *GetUpdateReply) error {
 func (kv *KVPaxos) Put(args *PutArgs, reply *PutReply) error {
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
-	op := Operation{OpName:"put", ClientStroke:args.ClientStroke,OperationId:args.RequestID, ClientId :args.ClientID,Index:0, Lowlink:0}
+	op := mencius.Operation{OpName:"put", ClientStroke:args.ClientStroke,OperationId:args.RequestID, ClientId :args.ClientID,Index:0, Lowlink:0}
 	seq := kv.CommitOp(op)
 	go kv.ExecuteUntil(seq)
 	reply.Err = ""
@@ -85,7 +86,7 @@ func (kv *KVPaxos) Put(args *PutArgs, reply *PutReply) error {
 		return nil
 	}
 	len := kv.maxExecutedOpNum-ck_newest_op_num
-	missed_ops := make([]Operation,len)
+	missed_ops := make([]mencius.Operation,len)
 	for i := 0; i < len; i++ {
 		index := kv.maxExecutedOpNum-(len-1-i)
 		missed_ops[i] = kv.opLogs[index]
@@ -100,8 +101,8 @@ func (kv *KVPaxos) Put(args *PutArgs, reply *PutReply) error {
 func (kv *KVPaxos) Get(args *GetArgs, reply *GetReply) error {
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
-	stroke :=Stroke{Start_x:args.Start_x,Start_y:args.Start_y}
-	op := Operation{OpName:"get", ClientStroke:stroke, OperationId:args.RequestID, ClientId :args.ClientID,Index:0, Lowlink:0}
+	stroke :=mencius.Stroke{Start_x:args.Start_x,Start_y:args.Start_y}
+	op := mencius.Operation{OpName:"get", ClientStroke:stroke, OperationId:args.RequestID, ClientId :args.ClientID,Index:0, Lowlink:0}
 	seq := kv.CommitOp(op)
 	val := kv.ExecuteUntil(seq)
 	reply.Value=val
@@ -111,12 +112,11 @@ func (kv *KVPaxos) Get(args *GetArgs, reply *GetReply) error {
 
 
 //Insert a operation and wait for it to be committed
-func (kv *KVPaxos) CommitOp(op Operation) int {
-  for kv.dead == false {
-    instance := kv.px.Max() + 1 
-	key:=op.ClientStroke.Start_x*kv.boardWidth+op.ClientStroke.Start_y
-    kv.px.Start(instance, op,key)
-    var agreed_op Operation
+//Rule 4
+func (kv *KVPaxos) CommitOp(op mencius.Operation) int {
+  for !kv.dead {
+	  instance := kv.px.Suggest(op)
+    var agreed_op mencius.Operation
     var decided bool
     
     to := 10 * time.Millisecond
@@ -124,8 +124,8 @@ func (kv *KVPaxos) CommitOp(op Operation) int {
       var v interface{}
       decided, v = kv.px.Status(instance)
       if decided {
-        agreed_op = v.(Operation)
-		kv.MarkAsCommitted(instance, agreed_op)
+        agreed_op = v.(mencius.Operation)
+		    kv.MarkAsCommitted(instance, agreed_op)
         if op.OperationId == agreed_op.OperationId && op.ClientId == agreed_op.ClientId {
           return instance
         }
@@ -145,10 +145,11 @@ func (kv *KVPaxos) CommitOp(op Operation) int {
 
 //Insert an Nop for instance int
 //return the actual operation agreed at that specific sequence number
-func (kv *KVPaxos) InsertNop(instance int) Operation{
-  op := Operation{OpName:"nop", OperationId:0, ClientId :0,Index:0, Lowlink:0}
-  kv.px.Start(instance, op,0)
-  var agreed_op Operation
+func (kv *KVPaxos) InsertNop(instance int) mencius.Operation{
+  op := mencius.Operation{OpName:"nop", OperationId:-1, ClientId :-1,Index:0, Lowlink:0}
+  //original: kv.px.Start(instance, op)
+  kv.px.InsertNoOp(instance, op)
+  var agreed_op mencius.Operation
   var decided bool
   //waiting for the instance to be decided by paxos
   to := 10 * time.Millisecond
@@ -156,20 +157,19 @@ func (kv *KVPaxos) InsertNop(instance int) Operation{
     var v interface{}
     decided, v = kv.px.Status(instance)
     if decided {
-      agreed_op = v.(Operation)
+      agreed_op = v.(mencius.Operation)
       kv.MarkAsCommitted(instance, agreed_op)
       return agreed_op
     }
     time.Sleep(to)
     if to<10*time.Second {to *= 2}
   }
-  return Operation{}
+  return mencius.Operation{}
 }
-
 
 // update the opLogs of the server 
 // and mark the operation with instance number as MarkAsExecuted
-func (kv *KVPaxos) MarkAsCommitted(ins_num int, op Operation){
+func (kv *KVPaxos) MarkAsCommitted(ins_num int, op mencius.Operation){
    kv.logsMu.Lock()
    op.SeqNum=ins_num
    op.Status = "COMMITTED"
@@ -197,7 +197,7 @@ func (kv *KVPaxos) kill() {
 func StartServer(servers []string, me int) *KVPaxos {
   // call gob.Register on structures you want
   // Go's RPC library to marshall/unmarshall.
-  gob.Register(Operation{})
+  gob.Register(mencius.Operation{})
 
   kv := new(KVPaxos)
   kv.me = me
@@ -213,7 +213,7 @@ func StartServer(servers []string, me int) *KVPaxos {
   
   }else{
   kv.checkDuplicate = make(map[int64]CachedRequestState)
-  kv.opLogs=make(map[int]Operation)
+  kv.opLogs=make(map[int]mencius.Operation)
   kv.maxExecutedOpNum=-1
   }
  

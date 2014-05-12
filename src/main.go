@@ -13,6 +13,7 @@ import (
         "net/http"
         "encoding/json"
         "projectserver"
+        "mencius"
         "strconv"
         "runtime"
         "os"
@@ -124,7 +125,7 @@ func handlerStroke(w http.ResponseWriter, r *http.Request){
   y2,_:=strconv.Atoi(r.FormValue("endy"))
   col:=r.FormValue("color")
   size,_:=strconv.Atoi(r.FormValue("size"))
-  op:=projectserver.Stroke{x1,y1,x2,y2,col,size}
+  op:=mencius.Stroke{x1,y1,x2,y2,col,size}
   //fmt.Println("%v,%v,%v,%v", x1,y1,x2,y2)
   ClientList[id].Put(op) //strokes won't be in order
   //fmt.Println(id)
