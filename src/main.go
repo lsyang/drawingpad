@@ -126,20 +126,16 @@ func handlerStroke(w http.ResponseWriter, r *http.Request){
   col:=r.FormValue("color")
   size,_:=strconv.Atoi(r.FormValue("size"))
   op:=mencius.Stroke{x1,y1,x2,y2,col,size}
-  //fmt.Println("%v,%v,%v,%v", x1,y1,x2,y2)
-  ClientList[id].Put(op) //strokes won't be in order
-  //fmt.Println(id)
-  //ClientList[id].PutChan(op)
+  ClientList[id].Put(op) 
 }
 
 func drawUpdate(w http.ResponseWriter, r *http.Request) {
-  //lock it?
-  //call getUpdate() to get GetUpdateReply
-  //loop through to see if operation num is continous
-  //update max_operation_num
   id,_:=strconv.Atoi(r.FormValue("id"))
+  for id>=len(ClientList){ //previous clients: make length long enough to include this client
+    ck:=projectserver.MakeClerk([]string{kvh[(id%nservers)]})
+    ClientList=append(ClientList, ck)
+  }
   m:=ClientList[id].GetUpdate()
-  //m:=ClientList[id].GetChan()
   b, _ := json.Marshal(m)
   fmt.Fprint(w, string(b))
   

@@ -88,17 +88,12 @@ var __slice = Array.prototype.slice;
       this.register()
     }
    $.post(window.location.origin+"/drawUpdate", {id: ID}, function(data, status) {
-    //status = success
-
    obj = JSON.parse(data);
-   //console.log(obj)
    var sketch = sketch_object;
    if(obj.Has_operation){
-    console.log("getting update")
     for (var i=0; i<obj.New_operations.length; i++){
       var op=obj.New_operations[i]
       //if op.OpName=="Put"{
-      console.log(op)
       sketch.executeDraw(op.ClientStroke.Start_x,op.ClientStroke.Start_y,op.ClientStroke.End_x,op.ClientStroke.End_y,op.ClientStroke.Color,op.ClientStroke.Size)
     //}
     }
@@ -125,9 +120,7 @@ var __slice = Array.prototype.slice;
         x: x2,
         y: y2,
       });
-      sketch.actions.push(action)
-      console.log("drawing")
-      
+      sketch.actions.push(action)      
     };
 
 
@@ -173,7 +166,6 @@ var __slice = Array.prototype.slice;
     };
 
     Sketch.prototype.redraw = function() {
-      //console.log("redraw")
       var sketch;
       this.el.width = this.canvas.width();
       this.context = this.el.getContext('2d');
@@ -227,9 +219,6 @@ var __slice = Array.prototype.slice;
         }
          var val=this.color;
          var brush_size=this.size;
-       //   //testing purpose
-       //  // var keys=JSON.stringify([this.xy2val(_x,_y)])
-      // console.log(Math.round(pre.x),Math.round(pre.y),Math.round(_x),Math.round(_y));
         $.post(window.location.origin+"/stroke", {id: ID, startx: Math.round(pre.x),starty: Math.round(pre.y), endx: Math.round(_x),endy: Math.round(_y), color: val, size: brush_size}, function(data, status) {
              
         });
@@ -247,12 +236,10 @@ var __slice = Array.prototype.slice;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         event = _ref[_i];
         this.context.lineTo(event.x, event.y);
-        //console.log(event.x, event.y)
         previous = event;
       }
       this.context.strokeStyle = action.color;
       this.context.lineWidth = action.size;      
-      // console.log(event.x, event.y, action.color)
       return this.context.stroke();
     }
   };
