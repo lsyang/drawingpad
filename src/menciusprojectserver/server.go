@@ -12,7 +12,7 @@ import "math/rand"
 import "time"
 
 import "mencius"
-import "epaxos"
+
 const Debug=0
 func DPrintf(format string, a ...interface{}) (n int, err error) {
   if Debug > 0 {log.Printf(format, a...) }
@@ -35,9 +35,7 @@ type KVPaxos struct {
   me int
   dead bool // for testing
   unreliable bool // for testing
-  px *epaxos.Paxos
-
-  stack []Node
+  px *mencius.Paxos
   
   opLogs map[int]mencius.Operation
   boardWidth int
@@ -204,7 +202,7 @@ func StartServer(servers []string, me int) *KVPaxos {
  
   kv.boardWidth=1000
   kv.testMapColor=make(map[int]string) //map a position (x*boardWidth+y) to color
-
+/*
   if (Store){
   
   kv.opLogs,_ = ReadOpLogs(kv.me)
@@ -216,13 +214,15 @@ func StartServer(servers []string, me int) *KVPaxos {
   kv.opLogs=make(map[int]mencius.Operation)
   kv.maxExecutedOpNum=-1
   }
- 
-  kv.stack=	 make([]Node, 0, 100)
+ */
 
+  kv.checkDuplicate = make(map[int64]CachedRequestState)
+  kv.opLogs=make(map[int]mencius.Operation)
+  kv.maxExecutedOpNum=-1
   rpcs := rpc.NewServer()
   rpcs.Register(kv)
 
-  kv.px = epaxos.Make(servers, me, rpcs)
+  kv.px = mencius.Make(servers, me, rpcs)
 
   os.Remove(servers[me])
   l, e := net.Listen("unix", servers[me]);

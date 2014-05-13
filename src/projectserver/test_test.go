@@ -41,11 +41,12 @@ func cleanup(kva []*KVPaxos) {
 }
 func deleteStorage(n int) {
   for i := 0; i <n; i++ {
-      error:= os.Remove("opLogs"+strconv.Itoa(i))
-      if error!=nil{
-         fmt.Println("error remove oplogs")
-      }
+     os.Remove("opLogs"+strconv.Itoa(i))
+     os.Remove(MaxExecuted+strconv.Itoa(i))
+     os.Remove(CachedRequest+strconv.Itoa(i))
+/*
       error2:=os.Remove(MaxExecuted+strconv.Itoa(i))
+
       if error2!=nil{
          fmt.Println("error remove maxexecuted")
       }      
@@ -53,6 +54,7 @@ func deleteStorage(n int) {
       if error3!=nil{
       	fmt.Println("error remove cachedrequest")
       }
+*/
   }
 }
 
@@ -99,7 +101,7 @@ func TestBasic(t *testing.T) {
   l3 := make([]Stroke,3)
   l4 := make([]Stroke,4)
   ck.Put(s1)
-  time.Sleep(100*time.Millisecond)
+  time.Sleep(1000*time.Millisecond)
   l1[0]=s1
   l2[0]=s1
   l3[0]=s1
@@ -107,7 +109,7 @@ func TestBasic(t *testing.T) {
   checkHistory(t, ck, l1)
   
   ck.Put(s2)
-  time.Sleep(100*time.Millisecond)
+  time.Sleep(1000*time.Millisecond)
   l2[1]=s2
   l3[1]=s2
   l4[1]=s2
@@ -118,7 +120,7 @@ func TestBasic(t *testing.T) {
   cka[1].Put(s3)
   l3[2]=s3
   l4[2]=s3
-  time.Sleep(100*time.Millisecond)
+  time.Sleep(1000*time.Millisecond)
   checkHistory(t, ck, l3) 
   checkHistory(t, cka[1],l3) 
   checkHistory(t, cka[2],l3)
@@ -128,7 +130,7 @@ func TestBasic(t *testing.T) {
   fmt.Printf("Test: A new client join ...\n")
 
   new_client := MakeClerk(kvh)
-  time.Sleep(100 * time.Millisecond)
+  time.Sleep(1000 * time.Millisecond)
   checkHistory(t, new_client, l3) 
 
   fmt.Printf("  ... Passed\n")
@@ -305,11 +307,6 @@ time.Sleep(2 * time.Second)
   cka[2].Put(Stroke{1, 2, 10,10,"13",1})
   check(t, cka[3], 1, 2,"13")
   
-  time.Sleep(2*time.Second)
-  checkClientHisEqual(t, cka[1], cka[2])  
-  checkClientHisEqual(t, cka[0], cka[1])
-  checkClientHisEqual(t, cka[0], cka[2]) 
-
   fmt.Printf("  ... Passed\n")
 
   fmt.Printf("Test: Progress in majority ...\n")
@@ -728,6 +725,8 @@ time.Sleep(2 * time.Second)
   if ok {
     fmt.Printf("  ... Passed\n")
   }
+  deleteStorage(nservers)
+   deletePaxosStorage(nservers)
 }
 
 

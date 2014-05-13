@@ -154,35 +154,7 @@ func (ck *Clerk) GetUpdateFrom(num int) GetUpdateReply{
   //return reply
 }
 
-// Put operation by client
-// set the value for a key.
-// keeps trying until it succeeds.
-//
-/*
 func (ck *Clerk) Put(op Stroke) string {
-  ck.mu.Lock()
-  defer ck.mu.Unlock()
- //increment the requestID to be the next one
-  requestID := ck.requestID
- 
-  ck.requestID += 1
-  args := &PutArgs{ck.max_operation_num, op, ck.me, requestID}
-  for {
-    //try sending request for all the servers
-    for _, srv := range ck.servers {
-      var reply PutReply
-      ok := call(srv, "KVPaxos.Put", args, &reply)
-      if ok == true && reply.Err == "" {
-        return ""
-      }
-    }
-    time.Sleep(time.Second)
-  }
-}
-*/
-
-
-func (ck *Clerk) Put(op Stroke) {
   ck.mu.Lock()
   defer ck.mu.Unlock()
   
@@ -194,26 +166,13 @@ func (ck *Clerk) Put(op Stroke) {
       ok := call(srv, "KVPaxos.Put", args, &reply)
       if ok {
         ck.requestID++
-        return 
+        return ""
       }
     }
     time.Sleep(100 * time.Millisecond)
   }
 }
 
-
-
-
-// func (ck *Clerk) PutChan(op Stroke){
-//   //fmt.Println("here!")
-//   ck.putChan <- op
-// }
-// func (ck *Clerk) GetChan() GetUpdateReply{
-//   //fmt.Println("here!")
-//   reply:=<-ck.getChan //wait until it gets something?
-//   //fmt.Println("callinhg on get")
-//   return reply
-// }
 
 
 

@@ -3,7 +3,6 @@ import "math"
 import "sort"
 
 func (px *Paxos) DriveProposing(seq int, v interface{}, op_key int) {
-px.mu.Lock()
 	maxProposalNo := 0
 	length := len(px.peers)
 	f:= int(math.Floor(float64(length/2))) //tolerated_failier_count F
@@ -16,23 +15,15 @@ px.mu.Lock()
 		seqNum= px.maxSeqNum(deps)+1 
 		newSlice := make([]int, len(deps)+1, cap(deps)+1)
 		copy(newSlice, deps)
-		newSlice[len(deps)]=seq 
-		px.mapMu.Lock()
+		newSlice[len(deps)]=seq     
 		px.keytoins[op_key]=newSlice
-        px.mapMu.Unlock()    
-	
 	}else{
-		px.mapMu.Lock()
-		px.keytoins[op_key]=[]int{seq}
-    	px.mapMu.Unlock()
+	    px.keytoins[op_key]=[]int{seq}
+
 	}
 	//add the operation to statusMap, i.e. cmds_L[L][i_L]
 	status:= Status{Value:nil, Done:false, Key:op_key, Deps:deps, SeqNum:seqNum}
-	px.mapMu.Lock()
-    px.statusMap[seq] =status	
-    px.mapMu.Unlock()
-px.mu.Unlock()
-	
+	px.statusMap[seq] =status
 	for {
 		px.mu.Lock()
 		decided := px.statusMap[seq].Done
@@ -140,14 +131,10 @@ func (px *Paxos) GetNextNumber(maxsofar int) int {
 func (px *Paxos) maxSeqNum(deps []int) int {
 	max :=0
 	for _,ins_num:=range(deps){
-		status,ok := px.statusMap[ins_num]
-		if ok{
-		seq :=status.SeqNum
-		if seq>max {
+		seq := px.statusMap[ins_num].SeqNum
+		if seq>max{
 			max=seq
 		}
-		}
-		
 	}
 	return max
 }

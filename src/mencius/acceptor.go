@@ -61,13 +61,6 @@ func (px *Paxos) AcceptRevoke(args *AcceptRevokeArgs, reply *AcceptRevokeReply) 
         reply.Ok = false
     } else {
         px.acceptorStateMap[SeqNo] = AcceptorState{ProposalNo, ProposalNo, Value}
-        /* if (SeqNo%Interval==0){
-            WriteToDisk(px.me,px.acceptorStateMap)
-            WriteMin(px.me,px.min)
-            WriteMax(px.me,px.max)
-            WriteToDisk(px.me,px.peersDoneValue)
-            WriteToDisk(px.me, px.statusMap)
-        }*/
         reply.Ok = true
     }
   } 
@@ -116,13 +109,6 @@ func (px *Paxos) AcceptSuggest(args *AcceptSuggestArgs, reply *AcceptSuggestRepl
         reply.Ok = false
     } else {
         px.acceptorStateMap[SeqNo] = AcceptorState{ProposalNo, ProposalNo, Value}
-        if (SeqNo%Interval==0){
-                WriteToDisk(px.me,px.acceptorStateMap)
-                WriteMin(px.me,px.min)
-                WriteMax(px.me,px.max)
-                WriteToDisk(px.me,px.peersDoneValue)
-                WriteToDisk(px.me, px.statusMap)
-        }
         reply.Ok = true
        // fmt.Printf("Replica # %v accepts suggest for instance %v, px.next_ins=%v, time \n", px.me, SeqNo, px.next_ins);
     }   

@@ -9,6 +9,9 @@ import "fmt"
 import "math/rand"
 import "epaxos"
 
+// var DoBenchmarkt bool
+// DoBenchmarkt=true
+
 //Check a single stroke
 func check(t *testing.T, ck *Clerk, start int,end int, value string) {
   v := ck.Get(start,end)
@@ -979,7 +982,194 @@ runtime.GOMAXPROCS(4)
   checkHistory(t, cka[2], l1) 
   
 
-  fmt.Printf("  ... Passed first round \n")
+  fmt.Printf("  ... Passed \n")
 
 }
+
+var result string
+func benchmark(nservers int, b *testing.B) {
+  //runtime.GOMAXPROCS(4)
+
+  //const nservers = server
+  var kva []*KVPaxos = make([]*KVPaxos, nservers)
+  var kvh []string = make([]string, nservers)
+  defer cleanup(kva)
+
+  for i := 0; i < nservers; i++ {
+    kvh[i] = port("basic", i)
+  }
+  for i := 0; i < nservers; i++ {
+    kva[i] = StartServer(kvh, i)
+  }
+
+  ck := MakeClerk(kvh)
+  var cka []*Clerk=make([]*Clerk, nservers)
+  for i := 0; i < nservers; i++ {
+    cka[i] = MakeClerk([]string{kvh[i]})
+  }
+
+  //fmt.Printf("Bench marking, %v servers ...\n", nservers)
+  op:=Stroke{1,10,20,30,"aa",10}
+  var r string
+
+  for n := 0; n < b.N; n++ {
+    r=ck.Put(op)
+  }
+  result=r
+}
+
+
+func benchmarkConcurrentClients(nservers int, b *testing.B) {
+  //const nservers = server
+  var kva []*KVPaxos = make([]*KVPaxos, nservers)
+  var kvh []string = make([]string, nservers)
+  defer cleanup(kva)
+
+  for i := 0; i < nservers; i++ {
+    kvh[i] = port("basic", i)
+  }
+  for i := 0; i < nservers; i++ {
+    kva[i] = StartServer(kvh, i)
+  }
+
+  op:=Stroke{1,10,20,30,"aa",10}
+  var r string
+  
+
+  for n := 0; n < b.N; n++ {
+    for iters := 0; iters < 20; iters++ {
+      const npara = 15
+      var ca [npara]chan bool
+      for nth := 0; nth < npara; nth++ {
+        ca[nth] = make(chan bool)
+        go func(me int) {
+          defer func() { ca[me] <- true }()
+          ci := (rand.Int() % nservers)
+          myck := MakeClerk([]string{kvh[ci]})
+          r=myck.Put(op)
+          //myck.Put(2,2,strconv.Itoa(rand.Int()))
+        }(nth)
+      }
+      for nth := 0; nth < npara; nth++ {
+        <- ca[nth]
+      }
+     // var va [nservers]string
+    }
+   // fmt.Println(count)
+  }
+  result=r
+
+  //fmt.Printf("  ... Passed\n")
+}
+
+
+
+func benchmarkgetupdate(nservers int, nput int, b *testing.B) {
+  //runtime.GOMAXPROCS(4)
+
+  //const nservers = server
+  var kva []*KVPaxos = make([]*KVPaxos, nservers)
+  var kvh []string = make([]string, nservers)
+  defer cleanup(kva)
+
+  for i := 0; i < nservers; i++ {
+    kvh[i] = port("basic", i)
+  }
+  for i := 0; i < nservers; i++ {
+    kva[i] = StartServer(kvh, i)
+  }
+
+  //ck := MakeClerk(kvh)
+  var cka []*Clerk=make([]*Clerk, nservers)
+  for i := 0; i < nservers; i++ {
+    cka[i] = MakeClerk([]string{kvh[i]})
+  }
+
+  //fmt.Printf("Bench marking, %v servers ...\n", nservers)
+  op:=Stroke{1,10,20,30,"aa",10}
+  var r string
+
+  for n := 0; n < b.N; n++ {
+    for i:=0; i<nput; i++{
+      r=cka[0].Put(op)
+    }
+    updates:=cka[1].GetUpdate()
+    fmt.Println("length of new op is ," ,len(updates.New_operations))
+  }
+  result=r
+}
+
+
+//var update GetUpdateReply
+func benchmarkServerDie(nservers int, nput int, b *testing.B) {
+  //runtime.GOMAXPROCS(4)
+
+  //const nservers = server
+  var kva []*KVPaxos = make([]*KVPaxos, nservers)
+  var kvh []string = make([]string, nservers)
+  defer cleanup(kva)
+
+  for i := 0; i < nservers; i++ {
+    kvh[i] = port("basic", i)
+  }
+  for i := 0; i < nservers; i++ {
+    kva[i] = StartServer(kvh, i)
+  }
+
+  //ck := MakeClerk(kvh)
+  var cka []*Clerk=make([]*Clerk, nservers)
+  for i := 0; i < nservers; i++ {
+    cka[i] = MakeClerk([]string{kvh[i]})
+  }
+
+      kva[0].kill()
+   // kva[1].kill()
+  //fmt.Printf("Bench marking, %v servers ...\n", nservers)
+  op:=Stroke{1,10,20,30,"aa",10}
+  var r string
+
+  for n := 0; n < b.N; n++ {
+    for i:=0; i<nput; i++{
+      r=cka[1].Put(op)
+    }
+
+    // kvh[1] = port("basic", 1)
+    // kva[1] = StartServer(kvh, 1)
+
+    // deleteStorage(1)
+    // deletePaxosStorage(1)
+    kvh[0] = port("basic", 0)
+    kva[0] = StartServer(kvh, 0)
+    cka[0].Put(op)
+    for {
+      updates:=cka[0].GetUpdate()
+      length:=len(updates.New_operations)
+        if length>0{
+          //fmt.Println(" lenght is, ", length)
+          break
+        }
+    }
+    //fmt.Println("Count is, ", count)
+  }
+  result=r
+  //update=updates
+}
+
+// if DoBenchmark{
+  func BenchmarkPut3Server(b *testing.B)  { benchmark(3, b) }
+  //func BenchmarkPut5Server(b *testing.B)  { benchmark(5, b) }
+
+   func BenchmarkConcurrentClient3Server(b *testing.B)  { benchmarkConcurrentClients(3, b) }
+  // func BenchmarkConcurrentClient5Server(b *testing.B)  { benchmarkConcurrentClients(5, b) }
+
+  // func BenchmarkGetUpdate3Server500Puts(b *testing.B)  { benchmarkgetupdate(3, 500, b) }
+  // func BenchmarkGetUpdate5Server500Puts(b *testing.B)  { benchmarkgetupdate(5, 500, b) }
+
+  // func BenchmarkServerDie3Server500Puts(b *testing.B)  { benchmarkServerDie(3, 500, b) }
+  // func BenchmarkServerDie5Server500Puts(b *testing.B)  { benchmarkServerDie(5, 500, b) }
+
+// }
+
+
+
 

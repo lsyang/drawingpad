@@ -123,12 +123,7 @@ func (kv *KVPaxos) MarkAsExecuted(ins_num int){
    op.Status="EXECUTED"
    kv.opLogs[ins_num]=op
    kv.maxExecutedOpNum = ins_num
-   //write the server's relevant state to disk every Interval operations
-   if(ins_num % Interval==0){
-      WriteToDisk(kv.me,kv.maxExecutedOpNum)
-      WriteToDisk(kv.me,kv.opLogs)
-      WriteToDisk(kv.me,kv.checkDuplicate)  
-   }
+
    kv.logsMu.Unlock()
 }
 

@@ -96,39 +96,13 @@ func cleanup(kva []*KVPaxos) {
     }
   }
 }
-func deleteStorage(n int) {
-  for i := 0; i <n; i++ {
-      error:= os.Remove("opLogs"+strconv.Itoa(i))
-      if error!=nil{
-         fmt.Println("error remove oplogs")
-      }
-      error2:=os.Remove(MaxExecuted+strconv.Itoa(i))
-      if error2!=nil{
-         fmt.Println("error remove maxexecuted")
-      }      
-       error3:=os.Remove(CachedRequest+strconv.Itoa(i))
-      if error3!=nil{
-      	fmt.Println("error remove cachedrequest")
-      }
-  }
-}
 
-func deletePaxosStorage(n int){
-  for i := 0; i <n; i++ {
-   os.Remove(mencius.Max+strconv.Itoa(i))
-   os.Remove(mencius.Min+strconv.Itoa(i))
-   os.Remove(mencius.AcceptorStateMap+strconv.Itoa(i))
-   os.Remove(mencius.PeersDoneValue+strconv.Itoa(i))
-   os.Remove(mencius.StatusMap+strconv.Itoa(i))
-  }
-}
 
 func TestBasic(t *testing.T) {
   runtime.GOMAXPROCS(4)
 
   const nservers = 3
-  deleteStorage(nservers)
-  deletePaxosStorage(nservers)
+
   var kva []*KVPaxos = make([]*KVPaxos, nservers)
   var kvh []string = make([]string, nservers)
   defer cleanup(kva)
@@ -176,7 +150,7 @@ func TestBasic(t *testing.T) {
   l3[2]=s3
   l4[2]=s3
   time.Sleep(1000*time.Millisecond)
-    /*
+   
   checkHistory(t, ck, l3) 
   checkHistory(t, cka[1],l3) 
   checkHistory(t, cka[2],l3)
@@ -225,8 +199,7 @@ func TestBasic(t *testing.T) {
   fmt.Printf("  ... Passed\n")
  
   time.Sleep(1 * time.Second)
-  //deleteStorage(nservers)
-  */
+
 }
 
 
@@ -236,13 +209,11 @@ func TestDifferentBasic(t *testing.T) {
   runtime.GOMAXPROCS(4)
 
   const nservers = 3
-  deleteStorage(nservers)
-   deletePaxosStorage(nservers)
   var kva []*KVPaxos = make([]*KVPaxos, nservers)
   var kvh []string = make([]string, nservers)
 
   defer cleanup(kva)
-  //defer deleteStorage(nservers)
+
   for i := 0; i < nservers; i++ {
     kvh[i] = port("basic", i)
   }
@@ -259,29 +230,25 @@ func TestDifferentBasic(t *testing.T) {
 
   fmt.Printf("Test: Basic put/get for different indices ...\n")
 
-	ck.Put(mencius.Stroke{1,2, 10,10,"aa",1})
-	check(t, ck, 1,2, "aa")
-	fmt.Printf("ck.Put(1,2,aa) correct... \n")
+  ck.Put(mencius.Stroke{1,2, 10,10,"aa",1})
+  check(t, ck, 1,2, "aa")
 
+  ck.Put(mencius.Stroke{2, 2, 10,10,"aaa",1})
+  check(t, ck, 2,2, "aaa")
+  check(t, cka[1], 2,2, "aaa")
+  check(t, cka[2],2,2, "aaa")
 
-	ck.Put(mencius.Stroke{2, 2, 10,10,"aaa",1})
-	check(t, ck, 2,2, "aaa")
-	check(t, cka[1], 2,2, "aaa")
-	check(t, cka[2],2,2, "aaa")
+  ck.Put(mencius.Stroke{3,3,10,10, "b",1})
+  check(t, ck, 3,3, "b") 
+  check(t, cka[2], 3,3, "b")
+  check(t, cka[1], 3,3, "b") 
 
-	ck.Put(mencius.Stroke{3,3,10,10, "b",1})
-	check(t, ck, 3,3, "b") 
-	check(t, cka[2], 3,3, "b")
-	check(t, cka[1], 3,3, "b") 
-	fmt.Printf("ck.Put(3,3,10,10,b,1) correct... \n")
+  time.Sleep(1 * time.Second)
+  checkClientHisEqual(t, cka[1], cka[2])  
+  checkClientHisEqual(t, ck, cka[1])
+  checkClientHisEqual(t, ck, cka[2]) 
 
-    time.Sleep(1 * time.Second)
-	  checkClientHisEqual(t, cka[1], cka[2])  
-    checkClientHisEqual(t, ck, cka[1])
-    checkClientHisEqual(t, ck, cka[2]) 
-
-
-	fmt.Printf("  ... Passed\n")
+  fmt.Printf("  ... Passed\n")
 
   time.Sleep(1 * time.Second)
 }
@@ -332,13 +299,10 @@ time.Sleep(2 * time.Second)
 
   tag := "partition"
   const nservers = 5
-  deleteStorage(nservers)
-   deletePaxosStorage(nservers)
   var kva []*KVPaxos = make([]*KVPaxos, nservers)
 
   defer cleanup(kva)
   defer cleanpp(tag, nservers)
-   // defer deleteStorage(nservers)
     
   for i := 0; i < nservers; i++ {
     var kvh []string = make([]string, nservers)
@@ -406,6 +370,8 @@ time.Sleep(2 * time.Second)
   fmt.Printf("  ... Passed\n")
   //2, 3, 4 has 16, 0,1, has 12
 
+
+  /*
   fmt.Printf("Test: Completion after heal ...\n")
 
   part(t, tag, nservers, []int{0,2,3,4}, []int{1}, []int{})
@@ -440,20 +406,19 @@ time.Sleep(2 * time.Second)
   check(t, cka[1], 1,2, "15")
 
   fmt.Printf("  ... Passed\n")
+*/
 }
 
-/*
+
 func TestUnreliable(t *testing.T) {
 time.Sleep(2 * time.Second)
   runtime.GOMAXPROCS(4)
 
   const nservers = 3
-  deleteStorage(nservers)
-   deletePaxosStorage(nservers)
   var kva []*KVPaxos = make([]*KVPaxos, nservers)
   var kvh []string = make([]string, nservers)
   defer cleanup(kva)
-// defer deleteStorage(nservers)
+
   for i := 0; i < nservers; i++ {
     kvh[i] = port("un", i)
   }
@@ -482,7 +447,7 @@ time.Sleep(2 * time.Second)
   check(t, ck,2, 2,"aaa")
 
   fmt.Printf("  ... Passed\n")
-
+  /*
   fmt.Printf("Test: Sequence of puts, unreliable ...\n")
 
   for iters := 0; iters < 6; iters++ {
@@ -570,11 +535,11 @@ time.Sleep(2 * time.Second)
   }
 
   fmt.Printf("  ... Passed\n")
-
-
-}
 */
 
+}
+
+/*
 func TestHole(t *testing.T) {
 time.Sleep(2 * time.Second)
   runtime.GOMAXPROCS(4)
@@ -583,12 +548,11 @@ time.Sleep(2 * time.Second)
 
   tag := "hole"
   const nservers = 5
-  deleteStorage(nservers)
-   deletePaxosStorage(nservers)
+
   var kva []*KVPaxos = make([]*KVPaxos, nservers)
   defer cleanup(kva)
   defer cleanpp(tag, nservers)
- // defer deleteStorage(nservers)
+
   for i := 0; i < nservers; i++ {
     var kvh []string = make([]string, nservers)
     for j := 0; j < nservers; j++ {
@@ -678,8 +642,6 @@ time.Sleep(2 * time.Second)
 
   tag := "many"
   const nservers = 5
-  deleteStorage(nservers)
-   deletePaxosStorage(nservers)
   var kva []*KVPaxos = make([]*KVPaxos, nservers)
   defer cleanup(kva)
   defer cleanpp(tag, nservers)
@@ -789,6 +751,69 @@ time.Sleep(2 * time.Second)
   if ok {
     fmt.Printf("  ... Passed\n")
   }
+}
+*/
+
+
+
+
+
+
+//Test:a single server crashed/get killed
+func TestSingleCrash(t *testing.T) {
+  const nservers = 3
+
+
+  var kva []*KVPaxos = make([]*KVPaxos, nservers)
+  var kvh []string = make([]string, nservers)
+  defer cleanup(kva)
+
+  for i := 0; i < nservers; i++ {
+    kvh[i] = port("basic", i)
+  }
+  for i := 0; i < nservers; i++ {
+    kva[i] = StartServer(kvh, i)
+  }
+
+  ck := MakeClerk(kvh)
+  var cka [nservers]*Clerk
+  for i := 0; i < nservers; i++ {
+    cka[i] = MakeClerk([]string{kvh[i]})
+  }
+
+  fmt.Printf("Test: One server crash ...\n")
+  l1 := make([]mencius.Stroke,Interval)
+  //kill the server
+  kva[0].kill()
+  
+  //do Interval Puts
+  for i :=0;i<Interval+1; i++{
+     s1 :=mencius.Stroke{i,i,20, 20, "firstround",1}
+     ck.Put(s1) 
+     //l1[i]=s1
+     time.Sleep(10*time.Millisecond)   
+     if i<Interval {l1[i]=s1}
+  }
+
+  time.Sleep(2*time.Second)
+  checkHistory(t, cka[1], l1)
+  checkHistory(t, cka[2], l1) 
+ 
+ //restart the server
+  kvh[0] = port("basic", 0)  
+  kva[0] = StartServer(kvh, 0)
+  time.Sleep(2*time.Second)
+  
+  checkHistory(t, ck, l1)
+  checkHistory(t, cka[1], l1)
+  checkHistory(t, cka[2], l1) 
+  
+  checkClientHisEqual(t, cka[1], cka[2])  
+  checkClientHisEqual(t, ck, cka[1])
+  checkClientHisEqual(t, ck, cka[2]) 
+  
+  fmt.Printf("  ... Passed ... \n")
+  time.Sleep(1 * time.Second)
 }
 
 

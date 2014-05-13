@@ -31,7 +31,6 @@ var __slice = Array.prototype.slice;
 
            //call post every 1s
       $(document).ready(function () {
-        // $("#output").append("Waiting for system time..");
          setInterval(function() {sketch_object.getUpdate()}, 200);
        });
 
@@ -79,7 +78,7 @@ var __slice = Array.prototype.slice;
 
   Sketch.prototype.register=function(){
     $.post(window.location.origin+"/register", {id: ID}, function(data, status) {
-       ID=data //this also hear the response to other clients
+       ID=data 
     });
   };
 
@@ -88,14 +87,15 @@ var __slice = Array.prototype.slice;
       this.register()
     }
    $.post(window.location.origin+"/drawUpdate", {id: ID}, function(data, status) {
+
    obj = JSON.parse(data);
    var sketch = sketch_object;
    if(obj.Has_operation){
+    console.log("getting update")
     for (var i=0; i<obj.New_operations.length; i++){
       var op=obj.New_operations[i]
-      //if op.OpName=="Put"{
+      console.log(op)
       sketch.executeDraw(op.ClientStroke.Start_x,op.ClientStroke.Start_y,op.ClientStroke.End_x,op.ClientStroke.End_y,op.ClientStroke.Color,op.ClientStroke.Size)
-    //}
     }
    }
 	return sketch.redraw()
@@ -120,7 +120,9 @@ var __slice = Array.prototype.slice;
         x: x2,
         y: y2,
       });
-      sketch.actions.push(action)      
+      sketch.actions.push(action)
+      console.log("drawing")
+      
     };
 
 
@@ -139,19 +141,9 @@ var __slice = Array.prototype.slice;
     };
     Sketch.prototype.startPainting = function() {
       this.painting = true;
-      // return this.action = {
-      //   tool: this.tool,
-      //   color: this.color,
-      //   size: parseFloat(this.size),
-      //   events: []
-      // };
     };
     Sketch.prototype.stopPainting = function() {
-      // if (this.action) {
-      //   this.actions.push(this.action);
-      // }
       this.painting = false;
-      //this.action = null;
       this.history=[];
       return this.redraw();
     };
@@ -175,9 +167,6 @@ var __slice = Array.prototype.slice;
           return $.sketch.tools[this.tool].draw.call(sketch, this);
         }
       });
-      // if (this.painting && this.action) {
-      //   return $.sketch.tools[this.action.tool].draw.call(sketch, this.action);
-      // }
     };
     return Sketch;
   })();

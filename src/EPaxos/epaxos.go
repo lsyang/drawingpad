@@ -39,7 +39,6 @@ type Status struct {
 
 type Paxos struct {
   mu sync.Mutex
-  mapMu sync.Mutex
   l net.Listener
   dead bool
   unreliable bool
@@ -216,9 +215,6 @@ func (px *Paxos) Status(seq int) (bool, interface{}) {
 //
 func Make(peers []string, me int, rpcs *rpc.Server) *Paxos {
   px := &Paxos{}
-  px.mu.Lock()
-
-  
   px.peers = peers
   px.me = me
 
@@ -248,7 +244,7 @@ func Make(peers []string, me int, rpcs *rpc.Server) *Paxos {
  
  }
 
-px.mu.Unlock()
+
   if rpcs != nil {
     // caller will create socket &c
     rpcs.Register(px)
