@@ -1,6 +1,6 @@
-To start the server
+To start the server \n
 1. cd to "/src" and 
-2. run command "go run main.go" for servers using paxos, "go run mainmencius.go" for servers uging mencius.
+2. run command "go run main.go" for servers using paxos, "go run mainmencius.go" for servers using mencius.
 
 To start client
 Open the browser and type in the IP address of the server followed by port 9999, i.e., 18.19.0.42:9999.
