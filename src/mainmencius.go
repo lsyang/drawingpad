@@ -1,10 +1,4 @@
-//import epaxos
 package main
-// import "projectserver"
-// import "strconv"
-// import "runtime"
-// import "fmt"
-// import "os"
 
 
 import (
@@ -38,19 +32,7 @@ func main() {
     kva[i] = projectserver.StartServer(kvh, i)
   }
   fmt.Println("making servers")
-  StartBrowser()
-
-  //ck := projectserver.MakeClerk(kvh)
-  //const nclients=3
-  //var cka [nclients]*projectserver.Clerk
-   // go  projectserver.MakeClerk(kvh,":9999")
-   // go projectserver.MakeClerk(kvh,":9998")
-   // projectserver.MakeClerk(kvh)
-  // for i := 0; i < nclients; i++ {
-  //   cka[i] = projectserver.MakeClerk(kvh)
-  // }
-  //fmt.Println("making clients")
-	
+  StartBrowser()	
 }
 
 func port(tag string, host int) string {
@@ -104,7 +86,7 @@ var page =
      
     </div>
   </div>
-  <canvas id="colors_sketch" width="600" height="600"></canvas>
+  <canvas id="colors_sketch" width="1000" height="600"></canvas>
   
   </body>
 
@@ -126,27 +108,22 @@ func handlerStroke(w http.ResponseWriter, r *http.Request){
   col:=r.FormValue("color")
   size,_:=strconv.Atoi(r.FormValue("size"))
   op:=mencius.Stroke{x1,y1,x2,y2,col,size}
-  //fmt.Println("%v,%v,%v,%v", x1,y1,x2,y2)
   ClientList[id].Put(op) //strokes won't be in order
-  //fmt.Println(id)
-  //ClientList[id].PutChan(op)
 }
 
 func drawUpdate(w http.ResponseWriter, r *http.Request) {
-  //lock it?
-  //call getUpdate() to get GetUpdateReply
-  //loop through to see if operation num is continous
-  //update max_operation_num
   id,_:=strconv.Atoi(r.FormValue("id"))
+  for id>=len(ClientList){ //previous clients: make length long enough to include this client
+    ck:=projectserver.MakeClerk([]string{kvh[(id%nservers)]})
+    ClientList=append(ClientList, ck)
+  }
   m:=ClientList[id].GetUpdate()
-  //m:=ClientList[id].GetChan()
   b, _ := json.Marshal(m)
   fmt.Fprint(w, string(b))
   
 }
 
 func handlerRegister(w http.ResponseWriter, r *http.Request){
-  //create a new client, need lock
   id,_:=strconv.Atoi(r.FormValue("id"))
   if id==-1{
     id=len(ClientList)
