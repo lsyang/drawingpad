@@ -51,7 +51,7 @@ func (kv *KVPaxos) ExecuteUntil(ins_num int) string {
 				}
 			}
 			//Important: Execute this operation!
-			val = kv.findSCC(i)
+			val=kv.ExecuteOp(i)
 			
 		}	
 		return val

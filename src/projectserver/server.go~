@@ -4,7 +4,7 @@ import "net"
 import "fmt"
 import "net/rpc"
 import "log"
-import "epaxos"
+import "paxos"
 import "sync"
 import "os"
 import "syscall"
@@ -34,7 +34,7 @@ type KVPaxos struct {
   me int
   dead bool // for testing
   unreliable bool // for testing
-  px *epaxos.Paxos
+  px *paxos.Paxos
 
   stack []Node
   
@@ -114,8 +114,8 @@ func (kv *KVPaxos) Get(args *GetArgs, reply *GetReply) error {
 func (kv *KVPaxos) CommitOp(op Operation) int {
   for kv.dead == false {
     instance := kv.px.Max() + 1 
-	key:=op.ClientStroke.Start_x*kv.boardWidth+op.ClientStroke.Start_y
-    kv.px.Start(instance, op,key)
+	//key:=op.ClientStroke.Start_x*kv.boardWidth+op.ClientStroke.Start_y
+    kv.px.Start(instance, op)
     var agreed_op Operation
     var decided bool
     
@@ -147,7 +147,7 @@ func (kv *KVPaxos) CommitOp(op Operation) int {
 //return the actual operation agreed at that specific sequence number
 func (kv *KVPaxos) InsertNop(instance int) Operation{
   op := Operation{OpName:"nop", OperationId:0, ClientId :0,Index:0, Lowlink:0}
-  kv.px.Start(instance, op,0)
+  kv.px.Start(instance, op)
   var agreed_op Operation
   var decided bool
   //waiting for the instance to be decided by paxos
@@ -201,16 +201,6 @@ func StartServer(servers []string, me int) *KVPaxos {
 
   kv := new(KVPaxos)
   kv.me = me
-  
-/*
-  // TODO: Your initialization code here.
-  for i:=0;i<1000*1000;i++{
-	kv.board[i] = "0"
-	kv.board_snapshot[i] = "0"
-  }
- // kv.snapshot_interval=1000
- */
- 
  
   kv.boardWidth=1000
   kv.testMapColor=make(map[int]string) //map a position (x*boardWidth+y) to color
@@ -226,13 +216,12 @@ func StartServer(servers []string, me int) *KVPaxos {
   kv.opLogs=make(map[int]Operation)
   kv.maxExecutedOpNum=-1
   }
- 
-  kv.stack=	 make([]Node, 0, 100)
+
 
   rpcs := rpc.NewServer()
   rpcs.Register(kv)
 
-  kv.px = epaxos.Make(servers, me, rpcs)
+  kv.px = paxos.Make(servers, me, rpcs)
 
   os.Remove(servers[me])
   l, e := net.Listen("unix", servers[me]);

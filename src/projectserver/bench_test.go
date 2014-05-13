@@ -10,7 +10,7 @@ const Benchservers=3
   func BenchmarkConcurrentClientPut(b *testing.B)  { benchmarkConcurrentClients(Benchservers, b) }
 
 
- // func BenchmarkGetUpdate3Server500Puts(b *testing.B)  { benchmarkgetupdate(Benchservers, 500, b) }
+  func BenchmarkGetUpdate3Server500Puts(b *testing.B)  { benchmarkgetupdate(Benchservers, 500, b) }
  // func BenchmarkServerDie3Server500Puts(b *testing.B)  { benchmarkServerDie(Benchservers, 500, b) }
 
 

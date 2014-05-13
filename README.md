@@ -6,7 +6,7 @@ To start client
 Open the browser and type in the IP address of the server followed by port 9999, i.e., 18.19.0.42:9999.
 
 To delete all persistent storage for new canvas
-Delete all storage files written. Both under src folder and projectserver folder
+Delete all storage files written, under src folder.
 
 To run test
 1. Go to respective folder, eg projectserver, menciusprojectserver  

@@ -7,10 +7,7 @@ import "os"
 import "time"
 import "fmt"
 import "math/rand"
-import "epaxos"
-
-// var DoBenchmarkt bool
-// DoBenchmarkt=true
+import "paxos"
 
 //Check a single stroke
 func check(t *testing.T, ck *Clerk, start int,end int, value string) {
@@ -20,42 +17,6 @@ func check(t *testing.T, ck *Clerk, start int,end int, value string) {
    t.Fatalf("Get(%v) -> %v, expected %v", start,end, v, value)
    //fmt.Printf("Get(%v) -> %v, expected %v", start,end, v, value)
   }
-}
-
-//Check the history of clients to see if it equals the given list of strokes
-func checkHistory(t *testing.T, ck *Clerk, correct_strokes []Stroke) {
-   v := ck.GetUpdateFrom(-1)
-   if v.Has_operation{
-      missed_ops:= v.New_operations
-      j := 0
-      for i := 0; i < len(missed_ops); i++{
-           if (j <len(correct_strokes)){
-	     client_stroke :=missed_ops[i].ClientStroke 
-             correct_stroke :=correct_strokes[j]
-             if isNoOp(client_stroke){
-             }else{		    
-                  if !strokeEqual(client_stroke, correct_stroke) { 
-			t.Fatalf("Getupdate()'s stroke #%v, expected %v, got %v", j, correct_stroke, client_stroke)
-		  }
-                  j=j+1
-	     }
-          }
-     }
-     if j!=len(correct_strokes){
-        t.Fatalf("Getupdate()'s return %v noop stroke, should be %v strokes", j, len(correct_strokes))
-     }
-   }
-}
-
-//test if two strokes are equal
-func strokeEqual(s1 Stroke, s2 Stroke) bool {
-  result := (s1.Start_x==s2.Start_x && s1.Start_y==s2.Start_y && s1.End_x==s2.End_x && s1.End_y==s2.End_y && s1.Color==s2.Color && s1.Size==s2.Size)
-  return result
-}
-
-func isNoOp(s1 Stroke) bool {
-  result := (s1.Start_x==0 && s1.Start_y==0 && s1.End_x==0 && s1.End_y==0 && s1.Color=="" && s1.Size==0)
-  return result
 }
 
 
@@ -80,11 +41,12 @@ func cleanup(kva []*KVPaxos) {
 }
 func deleteStorage(n int) {
   for i := 0; i <n; i++ {
-      error:= os.Remove("opLogs"+strconv.Itoa(i))
-      if error!=nil{
-         fmt.Println("error remove oplogs")
-      }
+     os.Remove("opLogs"+strconv.Itoa(i))
+     os.Remove(MaxExecuted+strconv.Itoa(i))
+     os.Remove(CachedRequest+strconv.Itoa(i))
+/*
       error2:=os.Remove(MaxExecuted+strconv.Itoa(i))
+
       if error2!=nil{
          fmt.Println("error remove maxexecuted")
       }      
@@ -92,6 +54,7 @@ func deleteStorage(n int) {
       if error3!=nil{
       	fmt.Println("error remove cachedrequest")
       }
+*/
   }
 }
 
@@ -138,7 +101,7 @@ func TestBasic(t *testing.T) {
   l3 := make([]Stroke,3)
   l4 := make([]Stroke,4)
   ck.Put(s1)
-  time.Sleep(100*time.Millisecond)
+  time.Sleep(1000*time.Millisecond)
   l1[0]=s1
   l2[0]=s1
   l3[0]=s1
@@ -146,7 +109,7 @@ func TestBasic(t *testing.T) {
   checkHistory(t, ck, l1)
   
   ck.Put(s2)
-  time.Sleep(100*time.Millisecond)
+  time.Sleep(1000*time.Millisecond)
   l2[1]=s2
   l3[1]=s2
   l4[1]=s2
@@ -157,7 +120,7 @@ func TestBasic(t *testing.T) {
   cka[1].Put(s3)
   l3[2]=s3
   l4[2]=s3
-  time.Sleep(100*time.Millisecond)
+  time.Sleep(1000*time.Millisecond)
   checkHistory(t, ck, l3) 
   checkHistory(t, cka[1],l3) 
   checkHistory(t, cka[2],l3)
@@ -167,7 +130,7 @@ func TestBasic(t *testing.T) {
   fmt.Printf("Test: A new client join ...\n")
 
   new_client := MakeClerk(kvh)
-  time.Sleep(100 * time.Millisecond)
+  time.Sleep(1000 * time.Millisecond)
   checkHistory(t, new_client, l3) 
 
   fmt.Printf("  ... Passed\n")
@@ -253,6 +216,13 @@ func TestDifferentBasic(t *testing.T) {
 	check(t, ck, 3,3, "b") 
 	check(t, cka[2], 3,3, "b")
 	check(t, cka[1], 3,3, "b") 
+	
+    time.Sleep(1 * time.Second)
+	checkClientHisEqual(t, cka[1], cka[2])  
+    checkClientHisEqual(t, ck, cka[1])
+    checkClientHisEqual(t, ck, cka[2]) 
+
+
 	fmt.Printf("  ... Passed\n")
 
   time.Sleep(1 * time.Second)
@@ -336,7 +306,7 @@ time.Sleep(2 * time.Second)
   cka[0].Put(Stroke{1,2, 10,10,"12",1})
   cka[2].Put(Stroke{1, 2, 10,10,"13",1})
   check(t, cka[3], 1, 2,"13")
-
+  
   fmt.Printf("  ... Passed\n")
 
   fmt.Printf("Test: Progress in majority ...\n")
@@ -755,421 +725,8 @@ time.Sleep(2 * time.Second)
   if ok {
     fmt.Printf("  ... Passed\n")
   }
-}
-
-
-
-//Test:a single server  crashed/get killed
-func TestSingleCrash(t *testing.T) {
-  runtime.GOMAXPROCS(4)
-
-  const nservers = 3
-  var kva []*KVPaxos = make([]*KVPaxos, nservers)
-  var kvh []string = make([]string, nservers)
-  defer cleanup(kva)
-
-  for i := 0; i < nservers; i++ {
-    kvh[i] = port("basic", i)
-  }
-  for i := 0; i < nservers; i++ {
-    kva[i] = StartServer(kvh, i)
-  }
-
-  //ck := MakeClerk(kvh)
-  var cka [nservers]*Clerk
-  for i := 0; i < nservers; i++ {
-    cka[i] = MakeClerk([]string{kvh[i]})
-  }
-
-  fmt.Printf("Test: A single crash ...\n")
-
-  for iters := 0; iters < 1; iters++ {
-    const npara = 15
-    var ca [npara]chan bool
-    for nth := 0; nth < npara; nth++ {
-      ca[nth] = make(chan bool)
-      go func(me int) {
-        defer func() { ca[me] <- true }()
-        ci := (rand.Int() % nservers)
-        myck := MakeClerk([]string{kvh[ci]})
-        if (rand.Int() % 1000) < 500 {
-          op:=Stroke{2,2,20,30,strconv.Itoa(rand.Int()),10}
-          kva[0].kill() //kill server 0
-          myck.Put(op)     
-        } else {
-          myck.Get(2,2)
-        }
-      }(nth)
-    }
-    for nth := 0; nth < npara; nth++ {
-      <- ca[nth]
-    }
-
-    kvh[0] = port("basic", 0)  //restarting server
-    kva[0] = StartServer(kvh, 0)
-    var va [nservers]string
-    for i := 0; i < nservers; i++ {
-      va[i] = cka[i].Get(2,2)
-      if va[i] != va[0] {
-        t.Fatalf("mismatch, va[0] is ", va[0], "BUT va[i] is ", va[i])
-      }
-    } 
-  }
-
-  fmt.Printf("  ... Passed\n")
-  time.Sleep(1 * time.Second)
-}
-
-
-
-
-//Test: all servers crashed/get killed
-func TestAllCrash(t *testing.T) {
-runtime.GOMAXPROCS(4)
-
-  const nservers = 3
-
   deleteStorage(nservers)
-  deletePaxosStorage(nservers)
-
-  var kva []*KVPaxos = make([]*KVPaxos, nservers)
-  var kvh []string = make([]string, nservers)
-  defer cleanup(kva)
-
-  for i := 0; i < nservers; i++ {
-    kvh[i] = port("basic", i)
-  }
-  for i := 0; i < nservers; i++ {
-    kva[i] = StartServer(kvh, i)
-  }
-
-  ck := MakeClerk(kvh)
-  var cka [nservers]*Clerk
-  for i := 0; i < nservers; i++ {
-    cka[i] = MakeClerk([]string{kvh[i]})
-  }
-
-  fmt.Printf("Test: All servers crash ...\n")
-  l1 := make([]Stroke,Interval)
-  
-  //do Interval Puts
-  for i :=0;i<Interval+1; i++{
-     s1 :=Stroke{i,i,20, 20, "firstround",1}
-     ck.Put(s1) 
-     time.Sleep(10*time.Millisecond)   
-     if i<Interval {l1[i]=s1}
-  }
-
-  time.Sleep(3*time.Second)
-  checkHistory(t, ck, l1)
-  checkHistory(t, cka[1], l1)
-  checkHistory(t, cka[2], l1) 
-  
-  //kill all servers
-
-  for i := 0; i < nservers; i++ {
-     kva[i].kill()
-  }
-
-  time.Sleep(1*time.Second)
-  //restart all servers
-  for i := 0; i < nservers; i++ {
-     kvh[i] = port("basic", i)  //restarting server
-     kva[i] = StartServer(kvh, i)
-  }
-
-  checkHistory(t, ck, l1)
-  checkHistory(t, cka[1], l1)
-  checkHistory(t, cka[2], l1) 
-  
-
-  fmt.Printf("  ... Passed first round \n")
- /*
-  fmt.Printf(" Test second round \n")
-
-  time.Sleep(1*time.Second)
-  //continue to do another round of operations
-  for i:= 0;i<Interval+1; i++{
-     s :=Stroke{Interval+i,Interval+i,10, 10, "secendround",1}
-     cka[1].Put(s)
-      if i<Interval {l1[Interval+i]=s}
-  }
-
-  time.Sleep(1*time.Second)
-  checkHistory(t, ck, l1)
-  checkHistory(t, cka[1], l1)
-  checkHistory(t, cka[2], l1) 
- 
-  //kill all servers
-
-  for i := 0; i < nservers; i++ {
-     kva[i].kill()
-  }
-
-   time.Sleep(1*time.Second) 
-  //restart all servers
-  for i := 0; i < nservers; i++ {
-     kvh[i] = port("basic", i)  //restarting server
-     kva[i] = StartServer(kvh, i)
-  }
-  time.Sleep(1*time.Second)
-  checkHistory(t, ck, l1)
-  checkHistory(t, cka[1], l1)
-  checkHistory(t, cka[2], l1) 
-  */
-  fmt.Printf("  ... Passed\n")
+   deletePaxosStorage(nservers)
 }
-
-
-// Test: a single server crash and lose disk content
-func TestSingleLoseDisk (t *testing.T){
-runtime.GOMAXPROCS(4)
-
-  const nservers = 3
-
-  deleteStorage(nservers)
-  deletePaxosStorage(nservers)
-
-  var kva []*KVPaxos = make([]*KVPaxos, nservers)
-  var kvh []string = make([]string, nservers)
-  defer cleanup(kva)
-
-  for i := 0; i < nservers; i++ {
-    kvh[i] = port("basic", i)
-  }
-  for i := 0; i < nservers; i++ {
-    kva[i] = StartServer(kvh, i)
-  }
-
-  ck := MakeClerk(kvh)
-  var cka [nservers]*Clerk
-  for i := 0; i < nservers; i++ {
-    cka[i] = MakeClerk([]string{kvh[i]})
-  }
-
-  fmt.Printf("Test: One servers crashes and loses disk content ...\n")
-  l1 := make([]Stroke,Interval)
-  
-  //do Interval Puts
-  
-  for i :=0;i<Interval+1; i++{   
-     s1 :=Stroke{i,i,20, 20, "hp",1}
-     ck.Put(s1) 
-     time.Sleep(10*time.Millisecond)   
-     if i<Interval {l1[i]=s1}
-  }
-
-  time.Sleep(3*time.Second)
-  checkHistory(t, ck, l1)
-  checkHistory(t, cka[1], l1)
-  checkHistory(t, cka[2], l1) 
-  
-  //kill server o
-  kva[0].kill()
-  //delete its storage
-  deleteStorage(1)
-
-  time.Sleep(1*time.Second)
-  //restart server o
-  kvh[0] = port("basic", 0) 
-  kva[0] = StartServer(kvh, 0)
-  
-  ck.Put(Stroke{101,101,20,20,"after delete", 2}) 
-
-  time.Sleep(1*time.Second)
-  checkHistory(t, ck, l1)
-  checkHistory(t, cka[1], l1)
-  checkHistory(t, cka[2], l1) 
-  
-
-  fmt.Printf("  ... Passed \n")
-
-}
-
-var result string
-func benchmark(nservers int, b *testing.B) {
-  //runtime.GOMAXPROCS(4)
-
-  //const nservers = server
-  var kva []*KVPaxos = make([]*KVPaxos, nservers)
-  var kvh []string = make([]string, nservers)
-  defer cleanup(kva)
-
-  for i := 0; i < nservers; i++ {
-    kvh[i] = port("basic", i)
-  }
-  for i := 0; i < nservers; i++ {
-    kva[i] = StartServer(kvh, i)
-  }
-
-  ck := MakeClerk(kvh)
-  var cka []*Clerk=make([]*Clerk, nservers)
-  for i := 0; i < nservers; i++ {
-    cka[i] = MakeClerk([]string{kvh[i]})
-  }
-
-  //fmt.Printf("Bench marking, %v servers ...\n", nservers)
-  op:=Stroke{1,10,20,30,"aa",10}
-  var r string
-
-  for n := 0; n < b.N; n++ {
-    r=ck.Put(op)
-  }
-  result=r
-}
-
-
-func benchmarkConcurrentClients(nservers int, b *testing.B) {
-  //const nservers = server
-  var kva []*KVPaxos = make([]*KVPaxos, nservers)
-  var kvh []string = make([]string, nservers)
-  defer cleanup(kva)
-
-  for i := 0; i < nservers; i++ {
-    kvh[i] = port("basic", i)
-  }
-  for i := 0; i < nservers; i++ {
-    kva[i] = StartServer(kvh, i)
-  }
-
-  op:=Stroke{1,10,20,30,"aa",10}
-  var r string
-  
-
-  for n := 0; n < b.N; n++ {
-    for iters := 0; iters < 20; iters++ {
-      const npara = 15
-      var ca [npara]chan bool
-      for nth := 0; nth < npara; nth++ {
-        ca[nth] = make(chan bool)
-        go func(me int) {
-          defer func() { ca[me] <- true }()
-          ci := (rand.Int() % nservers)
-          myck := MakeClerk([]string{kvh[ci]})
-          r=myck.Put(op)
-          //myck.Put(2,2,strconv.Itoa(rand.Int()))
-        }(nth)
-      }
-      for nth := 0; nth < npara; nth++ {
-        <- ca[nth]
-      }
-     // var va [nservers]string
-    }
-   // fmt.Println(count)
-  }
-  result=r
-
-  //fmt.Printf("  ... Passed\n")
-}
-
-
-
-func benchmarkgetupdate(nservers int, nput int, b *testing.B) {
-  //runtime.GOMAXPROCS(4)
-
-  //const nservers = server
-  var kva []*KVPaxos = make([]*KVPaxos, nservers)
-  var kvh []string = make([]string, nservers)
-  defer cleanup(kva)
-
-  for i := 0; i < nservers; i++ {
-    kvh[i] = port("basic", i)
-  }
-  for i := 0; i < nservers; i++ {
-    kva[i] = StartServer(kvh, i)
-  }
-
-  //ck := MakeClerk(kvh)
-  var cka []*Clerk=make([]*Clerk, nservers)
-  for i := 0; i < nservers; i++ {
-    cka[i] = MakeClerk([]string{kvh[i]})
-  }
-
-  //fmt.Printf("Bench marking, %v servers ...\n", nservers)
-  op:=Stroke{1,10,20,30,"aa",10}
-  var r string
-
-  for n := 0; n < b.N; n++ {
-    for i:=0; i<nput; i++{
-      r=cka[0].Put(op)
-    }
-    updates:=cka[1].GetUpdate()
-    fmt.Println("length of new op is ," ,len(updates.New_operations))
-  }
-  result=r
-}
-
-
-//var update GetUpdateReply
-func benchmarkServerDie(nservers int, nput int, b *testing.B) {
-  //runtime.GOMAXPROCS(4)
-
-  //const nservers = server
-  var kva []*KVPaxos = make([]*KVPaxos, nservers)
-  var kvh []string = make([]string, nservers)
-  defer cleanup(kva)
-
-  for i := 0; i < nservers; i++ {
-    kvh[i] = port("basic", i)
-  }
-  for i := 0; i < nservers; i++ {
-    kva[i] = StartServer(kvh, i)
-  }
-
-  //ck := MakeClerk(kvh)
-  var cka []*Clerk=make([]*Clerk, nservers)
-  for i := 0; i < nservers; i++ {
-    cka[i] = MakeClerk([]string{kvh[i]})
-  }
-
-      kva[0].kill()
-   // kva[1].kill()
-  //fmt.Printf("Bench marking, %v servers ...\n", nservers)
-  op:=Stroke{1,10,20,30,"aa",10}
-  var r string
-
-  for n := 0; n < b.N; n++ {
-    for i:=0; i<nput; i++{
-      r=cka[1].Put(op)
-    }
-
-    // kvh[1] = port("basic", 1)
-    // kva[1] = StartServer(kvh, 1)
-
-    // deleteStorage(1)
-    // deletePaxosStorage(1)
-    kvh[0] = port("basic", 0)
-    kva[0] = StartServer(kvh, 0)
-    cka[0].Put(op)
-    for {
-      updates:=cka[0].GetUpdate()
-      length:=len(updates.New_operations)
-        if length>0{
-          //fmt.Println(" lenght is, ", length)
-          break
-        }
-    }
-    //fmt.Println("Count is, ", count)
-  }
-  result=r
-  //update=updates
-}
-
-// if DoBenchmark{
-  func BenchmarkPut3Server(b *testing.B)  { benchmark(3, b) }
-  //func BenchmarkPut5Server(b *testing.B)  { benchmark(5, b) }
-
-   func BenchmarkConcurrentClient3Server(b *testing.B)  { benchmarkConcurrentClients(3, b) }
-  // func BenchmarkConcurrentClient5Server(b *testing.B)  { benchmarkConcurrentClients(5, b) }
-
-  // func BenchmarkGetUpdate3Server500Puts(b *testing.B)  { benchmarkgetupdate(3, 500, b) }
-  // func BenchmarkGetUpdate5Server500Puts(b *testing.B)  { benchmarkgetupdate(5, 500, b) }
-
-  // func BenchmarkServerDie3Server500Puts(b *testing.B)  { benchmarkServerDie(3, 500, b) }
-  // func BenchmarkServerDie5Server500Puts(b *testing.B)  { benchmarkServerDie(5, 500, b) }
-
-// }
-
-
 
 

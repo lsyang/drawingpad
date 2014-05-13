@@ -4,7 +4,7 @@ import "net"
 import "fmt"
 import "net/rpc"
 import "log"
-import "epaxos"
+import "paxos"
 import "sync"
 import "os"
 import "syscall"
@@ -27,17 +27,14 @@ type CachedRequestState struct {
 type KVPaxos struct { 
   logsMu sync.Mutex //lock when the opLogs is accessed.
   executionMu sync.Mutex //lock when the server actually execute put and get action
-  stackMu sync.Mutex //
   
   mu sync.Mutex
   l net.Listener
   me int
   dead bool // for testing
   unreliable bool // for testing
-  px *epaxos.Paxos
+  px *paxos.Paxos
 
-  stack []Node
-  
   opLogs map[int]Operation
   boardWidth int
   testMapColor map[int]string //map a position (x*boardWidth+y) to color
@@ -114,8 +111,8 @@ func (kv *KVPaxos) Get(args *GetArgs, reply *GetReply) error {
 func (kv *KVPaxos) CommitOp(op Operation) int {
   for kv.dead == false {
     instance := kv.px.Max() + 1 
-	key:=op.ClientStroke.Start_x*kv.boardWidth+op.ClientStroke.Start_y
-    kv.px.Start(instance, op,key)
+	//key:=op.ClientStroke.Start_x*kv.boardWidth+op.ClientStroke.Start_y
+    kv.px.Start(instance, op)
     var agreed_op Operation
     var decided bool
     
@@ -147,7 +144,7 @@ func (kv *KVPaxos) CommitOp(op Operation) int {
 //return the actual operation agreed at that specific sequence number
 func (kv *KVPaxos) InsertNop(instance int) Operation{
   op := Operation{OpName:"nop", OperationId:0, ClientId :0,Index:0, Lowlink:0}
-  kv.px.Start(instance, op,0)
+  kv.px.Start(instance, op)
   var agreed_op Operation
   var decided bool
   //waiting for the instance to be decided by paxos
@@ -216,13 +213,12 @@ func StartServer(servers []string, me int) *KVPaxos {
   kv.opLogs=make(map[int]Operation)
   kv.maxExecutedOpNum=-1
   }
- 
-  kv.stack=	 make([]Node, 0, 100)
+
 
   rpcs := rpc.NewServer()
   rpcs.Register(kv)
 
-  kv.px = epaxos.Make(servers, me, rpcs)
+  kv.px = paxos.Make(servers, me, rpcs)
 
   os.Remove(servers[me])
   l, e := net.Listen("unix", servers[me]);

@@ -7,7 +7,7 @@ import "os"
 import "time"
 import "fmt"
 import "math/rand"
-import "epaxos"
+import "paxos"
 
 //Check a single stroke
 func check(t *testing.T, ck *Clerk, start int,end int, value string) {
@@ -60,11 +60,11 @@ func deleteStorage(n int) {
 
 func deletePaxosStorage(n int){
   for i := 0; i <n; i++ {
-   os.Remove(epaxos.Max+strconv.Itoa(i))
-   os.Remove(epaxos.Min+strconv.Itoa(i))
-   os.Remove(epaxos.AcceptorStateMap+strconv.Itoa(i))
-   os.Remove(epaxos.PeersDoneValue+strconv.Itoa(i))
-   os.Remove(epaxos.StatusMap+strconv.Itoa(i))
+   os.Remove(paxos.Max+strconv.Itoa(i))
+   os.Remove(paxos.Min+strconv.Itoa(i))
+   os.Remove(paxos.AcceptorStateMap+strconv.Itoa(i))
+   os.Remove(paxos.PeersDoneValue+strconv.Itoa(i))
+   os.Remove(paxos.StatusMap+strconv.Itoa(i))
   }
 }
 

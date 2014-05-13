@@ -5,7 +5,7 @@ const (
   CachedRequest="cachedRequestState"
   OperationLogs="opLogs"
   Store = true
-  Interval=50
+  Interval=100
 )
 
 type Lock struct{
