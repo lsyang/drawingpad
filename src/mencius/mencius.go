@@ -29,6 +29,7 @@ import "sync"
 import "fmt"
 import "math/rand"
 import "time"
+import "encoding/gob"
 
 
 type Status struct {
@@ -125,6 +126,7 @@ func (px *Paxos) Start(seq int, v interface{}) {
   defer px.mu.Unlock()
   px.UpdateMax(seq)
   _, alreadyStart := px.statusMap[seq]
+  gob.Register(Operation{})
   //fmt.Println(px.me, "receives ", seq," my next_ins is ",px.next_ins)
   if !alreadyStart && seq >= px.min && seq==px.next_ins {
       px.statusMap[seq] = Status{nil, false}
