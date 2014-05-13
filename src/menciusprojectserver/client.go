@@ -1,4 +1,4 @@
-package projectserver
+package menciusprojectserver
 
 import "net/rpc"
 import "fmt"
@@ -106,23 +106,16 @@ func (ck *Clerk) GetUpdate() GetUpdateReply{
     for _, srv := range ck.servers {
       ok := call(srv, "KVPaxos.GetUpdate", args, &reply)
       if ok {
-        //ck.getChan <- reply
-        // fmt.Println("%v, got an reply", ck.me)
         ck.requestID++
         operations:=reply.New_operations
         if reply.Has_operation{
-          //fmt.Println("%v, has operation" , ck.me)
          ck.max_operation_num=operations[len(operations)-1].SeqNum
         }
-        //break
         return reply
-        //time.Sleep(80 * time.Millisecond) //goes faster and throws away empty ops
       }
     }
     time.Sleep(80 * time.Millisecond)
-    //fmt.Println("here")
   }
-  //return reply
 }
 
 //Get all the updates after num, does not include num
@@ -136,54 +129,24 @@ func (ck *Clerk) GetUpdateFrom(num int) GetUpdateReply{
     for _, srv := range ck.servers {
       ok := call(srv, "KVPaxos.GetUpdate", args, &reply)
       if ok {
-        //ck.getChan <- reply
-        // fmt.Println("%v, got an reply", ck.me)
         ck.requestID++
         operations:=reply.New_operations
         if reply.Has_operation{
-          //fmt.Println("%v, has operation" , ck.me)
          ck.max_operation_num=operations[len(operations)-1].SeqNum
         }
-        //break
         return reply
-        //time.Sleep(80 * time.Millisecond) //goes faster and throws away empty ops
       }
     }
     time.Sleep(80 * time.Millisecond)
-    //fmt.Println("here")
   }
-  //return reply
 }
 
 // Put operation by client
 // set the value for a key.
 // keeps trying until it succeeds.
 //
-/*
-func (ck *Clerk) Put(op Stroke) string {
-  ck.mu.Lock()
-  defer ck.mu.Unlock()
- //increment the requestID to be the next one
-  requestID := ck.requestID
- 
-  ck.requestID += 1
-  args := &PutArgs{ck.max_operation_num, op, ck.me, requestID}
-  for {
-    //try sending request for all the servers
-    for _, srv := range ck.servers {
-      var reply PutReply
-      ok := call(srv, "KVPaxos.Put", args, &reply)
-      if ok == true && reply.Err == "" {
-        return ""
-      }
-    }
-    time.Sleep(time.Second)
-  }
-}
-*/
 
-
-func (ck *Clerk) Put(op mencius.Stroke) {
+func (ck *Clerk) Put(op mencius.Stroke) string{
   ck.mu.Lock()
   defer ck.mu.Unlock()
   
@@ -195,7 +158,7 @@ func (ck *Clerk) Put(op mencius.Stroke) {
       ok := call(srv, "KVPaxos.Put", args, &reply)
       if ok {
         ck.requestID++
-        return 
+        return ""
       }
     }
     time.Sleep(100 * time.Millisecond)
@@ -203,18 +166,6 @@ func (ck *Clerk) Put(op mencius.Stroke) {
 }
 
 
-
-
-// func (ck *Clerk) PutChan(op Stroke){
-//   //fmt.Println("here!")
-//   ck.putChan <- op
-// }
-// func (ck *Clerk) GetChan() GetUpdateReply{
-//   //fmt.Println("here!")
-//   reply:=<-ck.getChan //wait until it gets something?
-//   //fmt.Println("callinhg on get")
-//   return reply
-// }
 
 
 

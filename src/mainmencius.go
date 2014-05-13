@@ -13,9 +13,9 @@ import (
         "os"
 )
 
-var ClientList []*projectserver.Clerk
+var ClientList []*menciusprojectserver.Clerk
 const nservers = 3
-var kva []*projectserver.KVPaxos = make([]*projectserver.KVPaxos, nservers)
+var kva []*menciusprojectserver.KVPaxos = make([]*menciusprojectserver.KVPaxos, nservers)
 var kvh []string = make([]string, nservers)
 
 func main() {
@@ -29,7 +29,7 @@ func main() {
     kvh[i] = port("basic", i)
   }
   for i := 0; i < nservers; i++ {
-    kva[i] = projectserver.StartServer(kvh, i)
+    kva[i] = menciusprojectserver.StartServer(kvh, i)
   }
   fmt.Println("making servers")
   StartBrowser()	
@@ -114,7 +114,7 @@ func handlerStroke(w http.ResponseWriter, r *http.Request){
 func drawUpdate(w http.ResponseWriter, r *http.Request) {
   id,_:=strconv.Atoi(r.FormValue("id"))
   for id>=len(ClientList){ //previous clients: make length long enough to include this client
-    ck:=projectserver.MakeClerk([]string{kvh[(id%nservers)]})
+    ck:=menciusprojectserver.MakeClerk([]string{kvh[(id%nservers)]})
     ClientList=append(ClientList, ck)
   }
   m:=ClientList[id].GetUpdate()
@@ -127,7 +127,7 @@ func handlerRegister(w http.ResponseWriter, r *http.Request){
   id,_:=strconv.Atoi(r.FormValue("id"))
   if id==-1{
     id=len(ClientList)
-    ck:=projectserver.MakeClerk([]string{kvh[(id%nservers)]})
+    ck:=menciusprojectserver.MakeClerk([]string{kvh[(id%nservers)]})
     ClientList=append(ClientList, ck)
   }
   fmt.Fprint(w, id)

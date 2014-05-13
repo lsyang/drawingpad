@@ -1,4 +1,4 @@
-package projectserver
+package menciusprojectserver
 import "sync"
 import "mencius"
 
@@ -6,8 +6,8 @@ const (
   MaxExecuted="maxExecutedOpNum"
   CachedRequest="cachedRequestState"
   OperationLogs="opLogs"
-  Store = true
   Interval=50
+  
 )
 
 type Lock struct{

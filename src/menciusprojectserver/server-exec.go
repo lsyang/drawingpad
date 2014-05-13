@@ -1,4 +1,4 @@
-package projectserver
+package menciusprojectserver
 
 import "time"
 import  "mencius"

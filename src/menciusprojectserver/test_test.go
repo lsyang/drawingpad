@@ -1,4 +1,4 @@
-package projectserver
+package menciusprojectserver
 
 import "testing"
 import "runtime"
